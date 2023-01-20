@@ -134,7 +134,7 @@ func PacketFramingHandler(
 				if c.OnReadError != nil {
 					c.OnReadError(socket, err)
 				} else {
-					_, _ = fmt.Fprintf(os.Stderr, "socket read error: %v", err)
+					_, _ = fmt.Fprintf(os.Stderr, "socket read error: %v\n", err)
 				}
 
 				continue

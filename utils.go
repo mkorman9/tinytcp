@@ -63,7 +63,8 @@ func isBrokenPipe(err error) bool {
 		strings.Contains(err.Error(), "wsarecv: An existing connection was forcibly closed by the remote host.") ||
 		strings.Contains(err.Error(), "broken pipe") ||
 		strings.Contains(err.Error(), "reset by peer") ||
-		strings.Contains(err.Error(), "unexpected EOF")
+		strings.Contains(err.Error(), "unexpected EOF") ||
+		strings.Contains(err.Error(), "read/write on closed pipe")
 }
 
 func isTimeout(err error) bool {

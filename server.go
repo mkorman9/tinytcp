@@ -12,7 +12,7 @@ import (
 type Server struct {
 	config               *ServerConfig
 	address              string
-	listener             listener
+	listener             Listener
 	errorChannel         chan error
 	forkingStrategy      ForkingStrategy
 	sockets              *socketsList
@@ -53,7 +53,16 @@ func (s *Server) ForkingStrategy(forkingStrategy ForkingStrategy) {
 	s.forkingStrategy = forkingStrategy
 }
 
-// Port returns a port number used by underlying listener. Only returns a valid value after Start().
+// Listener allows to overwrite the default listener. Should be used with care.
+func (s *Server) Listener(listener Listener) {
+	if atomic.LoadInt32(&s.isRunning) == 1 {
+		return
+	}
+
+	s.listener = listener
+}
+
+// Port returns a port number used by underlying Listener. Only returns a valid value after Start().
 func (s *Server) Port() int {
 	return s.listener.Port()
 }

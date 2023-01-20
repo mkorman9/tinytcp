@@ -6,11 +6,17 @@ import (
 	"net"
 )
 
-type listener interface {
+// Listener represents a low-level interface used by server to manage its interface.
+type Listener interface {
 	io.Closer
 
+	// Listen starts listener.
 	Listen() error
+
+	// Accept pulls a connection from a queue and returns it or blocks if there is none available.
 	Accept() (net.Conn, error)
+
+	// Port returns a port number used by the listener.
 	Port() int
 }
 
@@ -55,6 +61,14 @@ func (l *netListener) Accept() (net.Conn, error) {
 	return l.listener.Accept()
 }
 
+func (l *netListener) Port() int {
+	if l.listener == nil {
+		return -1
+	}
+
+	return resolveListenerPort(l.listener)
+}
+
 func (l *netListener) Close() error {
 	if l.listener == nil {
 		return nil
@@ -68,15 +82,7 @@ func (l *netListener) Close() error {
 	return nil
 }
 
-func (l *netListener) Port() int {
-	if l.listener == nil {
-		return -1
-	}
-
-	return resolveListenerPort(l.listener)
-}
-
-func newListener(address string, config *ServerConfig) listener {
+func newListener(address string, config *ServerConfig) Listener {
 	return &netListener{
 		address: address,
 		config:  config,
