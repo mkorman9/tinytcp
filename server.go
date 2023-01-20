@@ -142,6 +142,7 @@ func (s *Server) Stop() (err error) {
 	s.sockets.ExecWrite(func(head *Socket) {
 		for socket := head; socket != nil; socket = socket.next {
 			_ = socket.Close()
+			socket.recycle()
 		}
 	})
 	s.sockets.Cleanup()
