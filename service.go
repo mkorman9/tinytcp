@@ -11,7 +11,6 @@ import (
 var shutdownSignals = []os.Signal{syscall.SIGINT, syscall.SIGTERM}
 
 // Service represents concurrent job, that is expected to run in background for the whole lifetime of the process.
-// Typical implementations of Service include network servers, such as HTTP or gRPC servers.
 type Service interface {
 	// Start is expected to start execution of the service and block.
 	// If the execution cannot be started, or it fails abruptly, it should return a non-nil error.
