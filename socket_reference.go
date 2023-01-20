@@ -38,7 +38,7 @@ func (s *SocketReference) Write(b []byte) (int, error) {
 		return 0, io.EOF
 	}
 
-	return s.Write(b)
+	return s.s.Write(b)
 }
 
 func (s *SocketReference) onRecycle() {
