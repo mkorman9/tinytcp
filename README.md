@@ -1,5 +1,25 @@
 # tinytcp
 
+![master status](https://github.com/mkorman9/tinytcp/actions/workflows/master.yml/badge.svg)
+
+tinytcp is a high-performance, zero-allocation TCP server in Go.
+It wraps around the standard `net` library to provide a sane API for quick prototyping.
+Major features include:
+
+- No external dependencies
+- No memory allocations on critical paths, all the important objects and buffers are pooled.
+- Full customization of connection handling process. By default, the sever starts a new goroutine for each connection,
+(`GoroutinePerConnection` strategy), but this can be changed.
+- Metrics collection for both the server and each connected client separately
+(total bytes read/written, volume of traffic per second).
+- Support for `tcp`, `tcp4`, `tcp6` and `unix` listeners.
+
+## Install
+
+```bash
+go get github.com/mkorman9/tinytcp
+```
+
 ## Example
 
 ```go
