@@ -21,20 +21,18 @@ func BenchmarkSingleClient(b *testing.B) {
 	b.ResetTimer()
 
 	client := listener.Connect()
-	
-	b.RunParallel(func(pb *testing.PB) {
-		for pb.Next() {
-			_, err := client.Write(payload)
-			if err != nil {
-				break
-			}
 
-			_, err = client.Read(buffer)
-			if err != nil {
-				continue
-			}
+	for i := 0; i < b.N; i++ {
+		_, err := client.Write(payload)
+		if err != nil {
+			break
 		}
-	})
+
+		_, err = client.Read(buffer)
+		if err != nil {
+			continue
+		}
+	}
 }
 
 func createEchoServer(listener *mockListener) *tinytcp.Server {
