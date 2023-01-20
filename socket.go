@@ -9,7 +9,8 @@ import (
 	"time"
 )
 
-// Socket represents a dedicated socket for given TCP client.
+// Socket represents a connected TCP socket.
+// An instance of Socket is only valid inside its designated handler and cannot be stored outside (see SocketReference).
 type Socket struct {
 	remoteAddress      string
 	connectedAt        time.Time
@@ -22,6 +23,7 @@ type Socket struct {
 	closeOnce          *sync.Once
 	closeHandlers      []SocketCloseHandler
 	closeHandlersMutex sync.RWMutex
+	recycleHandler     func()
 
 	prev *Socket
 	next *Socket
@@ -199,17 +201,26 @@ func (s *Socket) reset() {
 	s.recyclable = 0
 	s.closeOnce = nil
 	s.closeHandlers = nil
+	s.recycleHandler = nil
 
 	s.prev = nil
 	s.next = nil
 }
 
 func (s *Socket) recycle() {
+	if s.recycleHandler != nil {
+		s.recycleHandler()
+	}
+
 	atomic.StoreUint32(&s.recyclable, 1)
 }
 
 func (s *Socket) isRecyclable() bool {
 	return atomic.LoadUint32(&s.recyclable) == 1
+}
+
+func (s *Socket) onRecycle(handler func()) {
+	s.recycleHandler = handler
 }
 
 func (s *Socket) updateMetrics(interval time.Duration) (uint64, uint64) {
