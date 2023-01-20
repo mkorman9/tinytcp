@@ -3,6 +3,7 @@ package tinytcp
 import (
 	"io"
 	"net"
+	"sync"
 	"time"
 )
 
@@ -65,5 +66,6 @@ func MockSocket(in io.Reader, out io.Writer) *Socket {
 		connection:    &ConnMock{},
 		reader:        in,
 		writer:        out,
+		closeOnce:     &sync.Once{},
 	}
 }

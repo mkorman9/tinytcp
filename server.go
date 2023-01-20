@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -17,6 +18,7 @@ type Server struct {
 	errorChannel         chan error
 	forkingStrategy      ForkingStrategy
 	sockets              *socketsList
+	isRunning            int32
 	ticker               *time.Ticker
 	abortOnce            sync.Once
 	metrics              ServerMetrics
@@ -62,11 +64,6 @@ func (s *Server) Port() int {
 	}
 
 	return resolveListenerPort(s.listener)
-}
-
-// Sockets returns a list of all client sockets currently connected.
-func (s *Server) Sockets() []*Socket {
-	return s.sockets.Copy()
 }
 
 // Metrics returns aggregated server metrics.
@@ -127,7 +124,7 @@ func (s *Server) Stop() (err error) {
 	s.listenerMutex.Lock()
 	defer s.listenerMutex.Unlock()
 
-	if s.listener == nil {
+	if !atomic.CompareAndSwapInt32(&s.isRunning, 1, 0) {
 		return
 	}
 
@@ -136,17 +133,17 @@ func (s *Server) Stop() (err error) {
 			err = e
 		}
 	}
-	s.listener = nil
 
 	if s.ticker != nil {
 		s.ticker.Stop()
 	}
 	s.ticker = nil
 
-	sockets := s.Sockets()
-	for _, socket := range sockets {
-		_ = socket.Close()
-	}
+	s.sockets.ExecWrite(func(head *Socket) {
+		for socket := head; socket != nil; socket = socket.next {
+			_ = socket.Close()
+		}
+	})
 	s.sockets.Cleanup()
 
 	s.forkingStrategy.OnStop()
@@ -201,6 +198,8 @@ func (s *Server) startServer() error {
 
 	go s.startBackgroundJob()
 	s.forkingStrategy.OnStart(s.socketPanicHandler)
+
+	atomic.StoreInt32(&s.isRunning, 1)
 
 	return nil
 }
@@ -258,12 +257,9 @@ func (s *Server) startBackgroundJob() {
 		s.ticker = time.NewTicker(s.config.TickInterval)
 	}
 
-	for {
-		select {
-		case <-s.ticker.C:
-			s.updateMetrics()
-			s.sockets.Cleanup()
-		}
+	for range s.ticker.C {
+		s.updateMetrics()
+		s.sockets.Cleanup()
 	}
 }
 

@@ -53,7 +53,7 @@ func (s *socketsList) Cleanup() {
 	for socket != nil {
 		next := socket.next
 
-		if socket.IsClosed() {
+		if socket.isRecyclable() {
 			switch socket {
 			case s.head:
 				s.head = socket.next
@@ -73,23 +73,16 @@ func (s *socketsList) Cleanup() {
 	}
 }
 
-func (s *socketsList) Copy() []*Socket {
-	s.m.RLock()
-	defer s.m.RUnlock()
-
-	var list []*Socket
-	for socket := s.head; socket != nil; socket = socket.next {
-		if !socket.IsClosed() {
-			list = append(list, socket)
-		}
-	}
-
-	return list
-}
-
 func (s *socketsList) ExecRead(f func(head *Socket)) {
 	s.m.RLock()
 	defer s.m.RUnlock()
+
+	f(s.head)
+}
+
+func (s *socketsList) ExecWrite(f func(head *Socket)) {
+	s.m.Lock()
+	defer s.m.Unlock()
 
 	f(s.head)
 }

@@ -3,6 +3,9 @@ package tinytcp
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
+	"io"
+	"os"
 	"sync"
 )
 
@@ -36,6 +39,9 @@ type PacketFramingConfig struct {
 	// MinReadSpace sets a minimal space in read buffer that's needed to fit another Read() into it,
 	// without allocating auxiliary buffer (default: 1KiB or 1/4 of ReadBufferSize).
 	MinReadSpace int
+
+	// OnReadError is a handler called when Read() encounters an error other than EOF.
+	OnReadError func(*Socket, error)
 }
 
 func mergePacketFramingConfig(provided *PacketFramingConfig) *PacketFramingConfig {
@@ -121,8 +127,14 @@ func PacketFramingHandler(
 		for {
 			bytesRead, err := socket.Read(readBuffer[rightOffset:])
 			if err != nil {
-				if socket.IsClosed() {
+				if err == io.EOF {
 					break
+				}
+
+				if c.OnReadError != nil {
+					c.OnReadError(socket, err)
+				} else {
+					_, _ = fmt.Fprintf(os.Stderr, "socket read error: %v", err)
 				}
 
 				continue

@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/mkorman9/tinytcp"
+	"io"
 )
 
 func main() {
@@ -30,9 +31,11 @@ func serve(socket *tinytcp.Socket) tinytcp.PacketHandler {
 	return func(packet []byte) {
 		_, err := socket.Write(packet)
 		if err != nil {
-			if socket.IsClosed() {
+			if err == io.EOF {
 				return
 			}
+
+			fmt.Printf("Error while writing: %v\n", err)
 		}
 	}
 }

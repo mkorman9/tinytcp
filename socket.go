@@ -19,7 +19,7 @@ type Socket struct {
 	meteredReader      *meteredReader
 	meteredWriter      *meteredWriter
 	isClosed           uint32
-	closeOnce          sync.Once
+	closeOnce          *sync.Once
 	closeHandlers      []SocketCloseHandler
 	closeHandlersMutex sync.RWMutex
 
@@ -46,33 +46,27 @@ func (s *Socket) ConnectedAt() time.Time {
 	return s.connectedAt
 }
 
-// IsClosed check whether this connection has been closed, either by the server or the client.
-func (s *Socket) IsClosed() bool {
-	return atomic.LoadUint32(&s.isClosed) == 1
-}
-
 // Close closes underlying TCP connection and executes all the registered close handlers.
 // This method always returns nil, but its signature is meant to stick to the io.Closer interface.
 func (s *Socket) Close(reason ...CloseReason) (err error) {
 	s.closeOnce.Do(func() {
-		atomic.StoreUint32(&s.isClosed, 1)
-
 		if e := s.connection.Close(); e != nil {
 			err = e
 		}
-
-		s.closeHandlersMutex.RLock()
-		defer s.closeHandlersMutex.RUnlock()
 
 		r := CloseReasonServer
 		if reason != nil {
 			r = reason[0]
 		}
 
+		s.closeHandlersMutex.RLock()
 		for i := len(s.closeHandlers) - 1; i >= 0; i-- {
 			handler := s.closeHandlers[i]
 			handler(r)
 		}
+		s.closeHandlersMutex.RUnlock()
+
+		atomic.StoreUint32(&s.isClosed, 1)
 	})
 
 	return
@@ -84,8 +78,7 @@ func (s *Socket) Read(b []byte) (int, error) {
 	if err != nil {
 		if isBrokenPipe(err) {
 			_ = s.Close(CloseReasonClient)
-		} else if isTimeout(err) {
-			// ignore
+			return n, io.EOF
 		}
 
 		return n, err
@@ -100,8 +93,7 @@ func (s *Socket) Write(b []byte) (int, error) {
 	if err != nil {
 		if isBrokenPipe(err) {
 			_ = s.Close(CloseReasonClient)
-		} else if isTimeout(err) {
-			// ignore
+			return n, io.EOF
 		}
 
 		return n, err
@@ -116,8 +108,7 @@ func (s *Socket) SetReadDeadline(deadline time.Time) error {
 	if err != nil {
 		if isBrokenPipe(err) {
 			_ = s.Close(CloseReasonClient)
-		} else if isTimeout(err) {
-			// ignore
+			return io.EOF
 		}
 
 		return err
@@ -132,8 +123,7 @@ func (s *Socket) SetWriteDeadline(deadline time.Time) error {
 	if err != nil {
 		if isBrokenPipe(err) {
 			_ = s.Close(CloseReasonClient)
-		} else if isTimeout(err) {
-			// ignore
+			return io.EOF
 		}
 
 		return err
@@ -202,6 +192,8 @@ func (s *Socket) init(conn net.Conn) {
 	s.meteredWriter.writer = conn
 	s.reader = s.meteredReader
 	s.writer = s.meteredWriter
+	s.closeOnce = &sync.Once{}
+	s.closeHandlersMutex = sync.RWMutex{}
 }
 
 func (s *Socket) reset() {
@@ -210,12 +202,15 @@ func (s *Socket) reset() {
 	s.meteredReader.reset()
 	s.meteredWriter.reset()
 	s.isClosed = 0
-	s.closeOnce = sync.Once{}
+	s.closeOnce = nil
 	s.closeHandlers = nil
-	s.closeHandlersMutex = sync.RWMutex{}
 
 	s.prev = nil
 	s.next = nil
+}
+
+func (s *Socket) isRecyclable() bool {
+	return atomic.LoadUint32(&s.isClosed) == 1
 }
 
 func (s *Socket) updateMetrics(interval time.Duration) (uint64, uint64) {
