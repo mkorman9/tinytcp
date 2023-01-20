@@ -18,7 +18,7 @@ type Socket struct {
 	writer             io.Writer
 	meteredReader      *meteredReader
 	meteredWriter      *meteredWriter
-	isClosed           uint32
+	recyclable         uint32
 	closeOnce          *sync.Once
 	closeHandlers      []SocketCloseHandler
 	closeHandlersMutex sync.RWMutex
@@ -65,8 +65,6 @@ func (s *Socket) Close(reason ...CloseReason) (err error) {
 			handler(r)
 		}
 		s.closeHandlersMutex.RUnlock()
-
-		atomic.StoreUint32(&s.isClosed, 1)
 	})
 
 	return
@@ -201,7 +199,7 @@ func (s *Socket) reset() {
 	s.connection = nil
 	s.meteredReader.reset()
 	s.meteredWriter.reset()
-	s.isClosed = 0
+	s.recyclable = 0
 	s.closeOnce = nil
 	s.closeHandlers = nil
 
@@ -209,8 +207,12 @@ func (s *Socket) reset() {
 	s.next = nil
 }
 
+func (s *Socket) recycle() {
+	atomic.StoreUint32(&s.recyclable, 1)
+}
+
 func (s *Socket) isRecyclable() bool {
-	return atomic.LoadUint32(&s.isClosed) == 1
+	return atomic.LoadUint32(&s.recyclable) == 1
 }
 
 func (s *Socket) updateMetrics(interval time.Duration) (uint64, uint64) {

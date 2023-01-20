@@ -35,6 +35,7 @@ func TestSocketsListCleanup(t *testing.T) {
 	}
 
 	_ = sockets[0].Close()
+	sockets[0].recycle()
 
 	list.Cleanup()
 
