@@ -33,9 +33,6 @@ type SocketHandler func(*Socket)
 // SocketCloseHandler represents a signature of function used by Socket to register custom close handlers.
 type SocketCloseHandler func(CloseReason)
 
-// SocketErrorHandler is a handler for errors inside socket handlers.
-type SocketErrorHandler func(*Socket, error)
-
 // RemoteAddress returns a remote address of the socket.
 func (s *Socket) RemoteAddress() string {
 	return s.remoteAddress

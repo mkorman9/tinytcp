@@ -23,13 +23,10 @@ type Server struct {
 	metricsUpdateHandler func(*ServerMetrics)
 	startHandler         func()
 	stopHandler          func()
-	socketPanicHandler   SocketErrorHandler
-	serverPanicHandler   ServerErrorHandler
-	acceptErrorHandler   ServerErrorHandler
+	socketPanicHandler   func(error)
+	serverPanicHandler   func(error)
+	acceptErrorHandler   func(error)
 }
-
-// ServerErrorHandler is a handler for errors inside server code.
-type ServerErrorHandler func(error)
 
 // NewServer returns new Server instance.
 func NewServer(address string, config ...*ServerConfig) *Server {
@@ -88,17 +85,17 @@ func (s *Server) OnStop(handler func()) {
 }
 
 // OnServerPanic sets a handler for panics inside server code.
-func (s *Server) OnServerPanic(handler ServerErrorHandler) {
+func (s *Server) OnServerPanic(handler func(error)) {
 	s.serverPanicHandler = handler
 }
 
 // OnSocketPanic sets a handler for panics inside socket handlers.
-func (s *Server) OnSocketPanic(handler SocketErrorHandler) {
+func (s *Server) OnSocketPanic(handler func(error)) {
 	s.socketPanicHandler = handler
 }
 
 // OnAcceptError sets a handler for errors returned by Accept().
-func (s *Server) OnAcceptError(handler ServerErrorHandler) {
+func (s *Server) OnAcceptError(handler func(error)) {
 	s.acceptErrorHandler = handler
 }
 

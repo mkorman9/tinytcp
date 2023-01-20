@@ -12,7 +12,7 @@ import (
 // so other implementations (like worker pool) may be implemented on top of this interface.
 type ForkingStrategy interface {
 	// OnStart is called once, after server start.
-	OnStart(panicHandler SocketErrorHandler)
+	OnStart(panicHandler func(error))
 
 	// OnAccept is called for every connection accepted by the server.
 	// The implementation should handle all the interactions with the socket,
@@ -33,10 +33,10 @@ type ForkingStrategy interface {
 type goroutinePerConnection struct {
 	handler      SocketHandler
 	goroutines   int32
-	panicHandler SocketErrorHandler
+	panicHandler func(error)
 }
 
-func (g *goroutinePerConnection) OnStart(panicHandler SocketErrorHandler) {
+func (g *goroutinePerConnection) OnStart(panicHandler func(error)) {
 	g.panicHandler = panicHandler
 }
 
@@ -55,7 +55,7 @@ func (g *goroutinePerConnection) OnAccept(socket *Socket) {
 		defer func() {
 			if r := recover(); r != nil {
 				if g.panicHandler != nil {
-					g.panicHandler(socket, fmt.Errorf("%v", r))
+					g.panicHandler(fmt.Errorf("%v", r))
 				}
 			}
 		}()
