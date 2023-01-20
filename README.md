@@ -6,8 +6,9 @@ tinytcp is a high-performance, zero-allocation TCP server in Go.
 It wraps around the standard `net` library to provide a sane API for quick prototyping.
 Major features include:
 
-- No external dependencies
+- No external dependencies.
 - No memory allocations on critical paths, all the important objects and buffers are pooled.
+- Automated packet extraction with no memory allocations (see `LengthPrefixedFraming` or `SplitBySeparator`).
 - Full customization of connection handling process. By default, the sever starts a new goroutine for each connection,
 (`GoroutinePerConnection` strategy), but this can be changed.
 - Metrics collection for both the server and each connected client separately
