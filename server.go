@@ -1,7 +1,6 @@
 package tinytcp
 
 import (
-	"crypto/tls"
 	"errors"
 	"net"
 	"sync"
@@ -13,15 +12,14 @@ import (
 type Server struct {
 	config               *ServerConfig
 	address              string
-	listener             net.Listener
-	listenerMutex        sync.RWMutex
+	listener             listener
 	errorChannel         chan error
 	forkingStrategy      ForkingStrategy
 	sockets              *socketsList
+	metrics              ServerMetrics
 	isRunning            int32
 	ticker               *time.Ticker
 	abortOnce            sync.Once
-	metrics              ServerMetrics
 	metricsUpdateHandler func(*ServerMetrics)
 	startHandler         func()
 	stopHandler          func()
@@ -44,6 +42,7 @@ func NewServer(address string, config ...*ServerConfig) *Server {
 	return &Server{
 		config:       c,
 		address:      address,
+		listener:     newListener(address, c),
 		errorChannel: make(chan error, 1),
 		sockets:      newSocketsList(c.MaxClients),
 	}
@@ -56,14 +55,7 @@ func (s *Server) ForkingStrategy(forkingStrategy ForkingStrategy) {
 
 // Port returns a port number used by underlying listener. Only returns a valid value after Start().
 func (s *Server) Port() int {
-	s.listenerMutex.RLock()
-	defer s.listenerMutex.RUnlock()
-
-	if s.listener == nil {
-		return -1
-	}
-
-	return resolveListenerPort(s.listener)
+	return s.listener.Port()
 }
 
 // Metrics returns aggregated server metrics.
@@ -107,23 +99,25 @@ func (s *Server) Start() error {
 		return errors.New("empty forking strategy")
 	}
 
-	err := s.startServer()
+	err := s.listener.Listen()
 	if err != nil {
 		return err
 	}
 
+	go s.startBackgroundJob()
+	s.forkingStrategy.OnStart(s.socketPanicHandler)
+
 	if s.startHandler != nil {
 		s.startHandler()
 	}
+
+	atomic.StoreInt32(&s.isRunning, 1)
 
 	return s.acceptLoop()
 }
 
 // Stop immediately stops the server and unblocks the Start() method.
 func (s *Server) Stop() (err error) {
-	s.listenerMutex.Lock()
-	defer s.listenerMutex.Unlock()
-
 	if !atomic.CompareAndSwapInt32(&s.isRunning, 1, 0) {
 		return
 	}
@@ -167,41 +161,6 @@ func (s *Server) Abort(e error) (err error) {
 	})
 
 	return
-}
-
-func (s *Server) startServer() error {
-	s.listenerMutex.Lock()
-	defer s.listenerMutex.Unlock()
-
-	if s.config.TLSCert != "" && s.config.TLSKey != "" {
-		cert, err := tls.LoadX509KeyPair(s.config.TLSCert, s.config.TLSKey)
-		if err != nil {
-			return err
-		}
-
-		s.config.TLSConfig.Certificates = []tls.Certificate{cert}
-
-		socket, err := tls.Listen(s.config.Network, s.address, s.config.TLSConfig)
-		if err != nil {
-			return err
-		}
-
-		s.listener = socket
-	} else {
-		socket, err := net.Listen(s.config.Network, s.address)
-		if err != nil {
-			return err
-		}
-
-		s.listener = socket
-	}
-
-	go s.startBackgroundJob()
-	s.forkingStrategy.OnStart(s.socketPanicHandler)
-
-	atomic.StoreInt32(&s.isRunning, 1)
-
-	return nil
 }
 
 func (s *Server) acceptLoop() error {
