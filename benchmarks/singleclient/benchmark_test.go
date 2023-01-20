@@ -1,6 +1,7 @@
 package singleclient
 
 import (
+	"bytes"
 	"crypto/rand"
 	"fmt"
 	"github.com/mkorman9/tinytcp"
@@ -47,7 +48,7 @@ func createEchoServer(listener *mockListener) *tinytcp.Server {
 
 	server.ForkingStrategy(tinytcp.GoroutinePerConnection(
 		tinytcp.PacketFramingHandler(
-			tinytcp.SplitBySeparator([]byte{'\n'}),
+			tinytcp.LengthPrefixedFraming(tinytcp.PrefixVarInt),
 			func(socket *tinytcp.Socket) tinytcp.PacketHandler {
 				return func(packet []byte) {
 					_, err := socket.Write(packet)
@@ -81,13 +82,19 @@ func preparePayload(size int) []byte {
 		return nil
 	}
 
-	for i := range payload {
-		if payload[i] == '\n' {
-			payload[i] = 0
-		}
+	var buff bytes.Buffer
+
+	err = tinytcp.WriteVarInt(&buff, len(payload))
+	if err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "%v", err)
+		return nil
 	}
 
-	payload[len(payload)-1] = '\n'
+	_, err = buff.Write(payload)
+	if err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "%v", err)
+		return nil
+	}
 
-	return payload
+	return buff.Bytes()
 }

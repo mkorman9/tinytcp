@@ -56,5 +56,5 @@ func serve(socket *tinytcp.Socket) {
 SingleClient
 ```
 $ GOMAXPROCS=1 go test -bench='BenchmarkSingleClient' -benchmem
-BenchmarkSingleClient     736452              1609 ns/op               0 B/op          0 allocs/op
+BenchmarkSingleClient     749252              1575 ns/op               0 B/op          0 allocs/op
 ```
