@@ -2,6 +2,7 @@ package tinytcp
 
 import (
 	"crypto/tls"
+	"io"
 	"net"
 	"sync"
 )
@@ -63,6 +64,7 @@ func (c *Client) Read(b []byte) (int, error) {
 	if err != nil {
 		if isBrokenPipe(err) {
 			_ = c.Close()
+			return n, io.EOF
 		}
 
 		return n, err
@@ -77,6 +79,7 @@ func (c *Client) Write(b []byte) (int, error) {
 	if err != nil {
 		if isBrokenPipe(err) {
 			_ = c.Close()
+			return n, io.EOF
 		}
 
 		return n, err
