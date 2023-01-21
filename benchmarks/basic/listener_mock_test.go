@@ -1,4 +1,4 @@
-package singleclient
+package basic
 
 import (
 	"net"

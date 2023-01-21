@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// ServerMetrics contains singleclient metrics gathered from TCP server.
+// ServerMetrics contains metrics collected from TCP server.
 type ServerMetrics struct {
 	// TotalRead is total number of bytes read by server since start.
 	TotalRead uint64
