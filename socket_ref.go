@@ -3,7 +3,6 @@ package tinytcp
 import (
 	"io"
 	"sync"
-	"sync/atomic"
 )
 
 // SocketRef allows to hold a reference to a socket outside its designated handler.
@@ -14,9 +13,8 @@ import (
 // might result in some very nasty bugs. SocketRef provides a way to safely store a reference to a socket,
 // and provide a subset of its functionalities.
 type SocketRef struct {
-	s        *Socket
-	m        sync.RWMutex
-	recycled uint32
+	s *Socket
+	m sync.RWMutex
 }
 
 // NewSocketRef creates an instance of SocketReference.
@@ -34,7 +32,7 @@ func (r *SocketRef) Write(b []byte) (int, error) {
 	r.m.RLock()
 	defer r.m.RUnlock()
 
-	if atomic.LoadUint32(&r.recycled) == 1 {
+	if r.s == nil {
 		return 0, io.EOF
 	}
 
@@ -45,5 +43,5 @@ func (r *SocketRef) onRecycle() {
 	r.m.Lock()
 	defer r.m.Unlock()
 
-	atomic.StoreUint32(&r.recycled, 1)
+	r.s = nil
 }
