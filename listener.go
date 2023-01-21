@@ -31,7 +31,7 @@ type netListener struct {
 func (l *netListener) Listen() error {
 	l.m.Lock()
 	defer l.m.Unlock()
-	
+
 	if l.config.TLSCert != "" && l.config.TLSKey != "" {
 		cert, err := tls.LoadX509KeyPair(l.config.TLSCert, l.config.TLSKey)
 		if err != nil {
@@ -60,13 +60,16 @@ func (l *netListener) Listen() error {
 
 func (l *netListener) Accept() (net.Conn, error) {
 	l.m.RLock()
-	defer l.m.RUnlock()
 
 	if l.listener == nil {
+		l.m.RUnlock()
 		return nil, io.EOF
 	}
 
-	return l.listener.Accept()
+	listener := l.listener
+	l.m.RUnlock()
+
+	return listener.Accept()
 }
 
 func (l *netListener) Addr() net.Addr {

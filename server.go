@@ -76,13 +76,6 @@ func (s *Server) Listener(listener Listener) {
 
 // Port returns a port number used by underlying Listener. Only returns a valid value after Start().
 func (s *Server) Port() int {
-	s.runningMutex.Lock()
-	defer s.runningMutex.Unlock()
-
-	if atomic.LoadInt32(&s.isRunning) == 1 {
-		return -1
-	}
-
 	return resolveNetworkPort(s.listener.Addr())
 }
 
