@@ -8,18 +8,23 @@ import (
 	"time"
 )
 
-// Server represents a TCP server. This struct conforms to the Service interface.
+// Server represents a TCP server. Server is responsible for accepting new connections using Listener,
+// and passing them to their respective handlers, defined by given ForkingStrategy.
+// This struct conforms to the Service interface.
 type Server struct {
-	config               *ServerConfig
-	address              string
-	listener             Listener
-	errorChannel         chan error
-	forkingStrategy      ForkingStrategy
-	sockets              *socketsList
-	metrics              ServerMetrics
-	isRunning            int32
-	ticker               *time.Ticker
-	abortOnce            sync.Once
+	config          *ServerConfig
+	address         string
+	listener        Listener
+	forkingStrategy ForkingStrategy
+	sockets         *socketsList
+	metrics         ServerMetrics
+
+	errorChannel chan error
+	isRunning    int32
+	runningMutex sync.Mutex
+	ticker       *time.Ticker
+	abortOnce    sync.Once
+
 	metricsUpdateHandler func(*ServerMetrics)
 	startHandler         func()
 	stopHandler          func()
@@ -40,18 +45,28 @@ func NewServer(address string, config ...*ServerConfig) *Server {
 		config:       c,
 		address:      address,
 		listener:     newListener(address, c),
-		errorChannel: make(chan error, 1),
 		sockets:      newSocketsList(c.MaxClients),
+		errorChannel: make(chan error, 1),
 	}
 }
 
 // ForkingStrategy sets forking strategy used by this server (see ForkingStrategy).
 func (s *Server) ForkingStrategy(forkingStrategy ForkingStrategy) {
+	s.runningMutex.Lock()
+	defer s.runningMutex.Unlock()
+
+	if atomic.LoadInt32(&s.isRunning) == 1 {
+		return
+	}
+
 	s.forkingStrategy = forkingStrategy
 }
 
 // Listener allows to overwrite the default listener. Should be used with care.
 func (s *Server) Listener(listener Listener) {
+	s.runningMutex.Lock()
+	defer s.runningMutex.Unlock()
+
 	if atomic.LoadInt32(&s.isRunning) == 1 {
 		return
 	}
@@ -101,6 +116,11 @@ func (s *Server) OnAcceptError(handler func(error)) {
 
 // Start starts TCP server and blocks until Stop() or Abort() are called.
 func (s *Server) Start() error {
+	s.runningMutex.Lock()
+
+	if s.listener == nil {
+		return errors.New("empty listener")
+	}
 	if s.forkingStrategy == nil {
 		return errors.New("empty forking strategy")
 	}
@@ -110,7 +130,7 @@ func (s *Server) Start() error {
 		return err
 	}
 
-	go s.startBackgroundJob()
+	s.startBackgroundJob()
 	s.forkingStrategy.OnStart(s.socketPanicHandler)
 
 	if s.startHandler != nil {
@@ -118,12 +138,16 @@ func (s *Server) Start() error {
 	}
 
 	atomic.StoreInt32(&s.isRunning, 1)
+	s.runningMutex.Unlock()
 
 	return s.acceptLoop()
 }
 
 // Stop immediately stops the server and unblocks the Start() method.
 func (s *Server) Stop() (err error) {
+	s.runningMutex.Lock()
+	defer s.runningMutex.Unlock()
+
 	if !atomic.CompareAndSwapInt32(&s.isRunning, 1, 0) {
 		return
 	}
@@ -208,25 +232,27 @@ func (s *Server) handleNewConnection(connection net.Conn) {
 }
 
 func (s *Server) startBackgroundJob() {
-	defer func() {
-		if r := recover(); r != nil {
-			err := errors.New("server background job restart loop")
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				err := errors.New("server background job restart loop")
 
-			if s.serverPanicHandler != nil {
-				s.serverPanicHandler(err)
+				if s.serverPanicHandler != nil {
+					s.serverPanicHandler(err)
+				}
+				_ = s.Abort(err)
 			}
-			_ = s.Abort(err)
+		}()
+
+		if s.ticker == nil {
+			s.ticker = time.NewTicker(s.config.TickInterval)
+		}
+
+		for range s.ticker.C {
+			s.updateMetrics()
+			s.sockets.Cleanup()
 		}
 	}()
-
-	if s.ticker == nil {
-		s.ticker = time.NewTicker(s.config.TickInterval)
-	}
-
-	for range s.ticker.C {
-		s.updateMetrics()
-		s.sockets.Cleanup()
-	}
 }
 
 func (s *Server) updateMetrics() {

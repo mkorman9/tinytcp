@@ -21,5 +21,4 @@ func main() {
 
 func serve(socket *tinytcp.Socket) {
 	socket.Write([]byte("Hello world!"))
-	socket.Close()
 }
