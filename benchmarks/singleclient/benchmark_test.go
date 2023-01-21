@@ -36,6 +36,31 @@ func BenchmarkSingleClient(b *testing.B) {
 	}
 }
 
+func BenchmarkConcurrentClients(b *testing.B) {
+	listener := newMockListener()
+	server := createEchoServer(listener)
+	defer server.Stop()
+
+	b.ResetTimer()
+
+	b.RunParallel(func(pb *testing.PB) {
+		client := listener.Connect()
+		buffer := make([]byte, len(payload))
+
+		for pb.Next() {
+			_, err := client.Write(payload)
+			if err != nil {
+				break
+			}
+
+			_, err = client.Read(buffer)
+			if err != nil {
+				continue
+			}
+		}
+	})
+}
+
 func createEchoServer(listener *mockListener) *tinytcp.Server {
 	server := tinytcp.NewServer("fakeaddress")
 	server.Listener(listener)
