@@ -25,7 +25,7 @@ type Server struct {
 	ticker       *time.Ticker
 	abortOnce    sync.Once
 
-	metricsUpdateHandler func(*ServerMetrics)
+	metricsUpdateHandler func(ServerMetrics)
 	startHandler         func()
 	stopHandler          func()
 	socketPanicHandler   func(error)
@@ -92,7 +92,7 @@ func (s *Server) Metrics() ServerMetrics {
 }
 
 // OnMetricsUpdate sets a handler that is called everytime the server metrics are updated.
-func (s *Server) OnMetricsUpdate(handler func(*ServerMetrics)) {
+func (s *Server) OnMetricsUpdate(handler func(ServerMetrics)) {
 	s.metricsUpdateHandler = handler
 }
 
@@ -288,7 +288,7 @@ func (s *Server) updateMetrics() {
 		s.forkingStrategy.OnMetricsUpdate(&s.metrics)
 
 		if s.metricsUpdateHandler != nil {
-			s.metricsUpdateHandler(&s.metrics)
+			s.metricsUpdateHandler(s.metrics)
 		}
 	})
 }
