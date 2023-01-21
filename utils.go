@@ -81,9 +81,9 @@ func parseRemoteAddress(connection net.Conn) string {
 	return host
 }
 
-func resolveListenerPort(listener net.Listener) int {
-	address := listener.Addr().String()
-	_, portRaw, err := net.SplitHostPort(address)
+func resolveNetworkPort(address net.Addr) int {
+	a := address.String()
+	_, portRaw, err := net.SplitHostPort(a)
 	if err != nil {
 		return 0
 	}

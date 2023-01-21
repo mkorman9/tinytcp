@@ -16,8 +16,8 @@ type Listener interface {
 	// Accept pulls a connection from a queue and returns it or blocks if there is none available.
 	Accept() (net.Conn, error)
 
-	// Port returns a port number used by the listener.
-	Port() int
+	// Addr returns a network address associated with this listener.
+	Addr() net.Addr
 }
 
 type netListener struct {
@@ -61,12 +61,12 @@ func (l *netListener) Accept() (net.Conn, error) {
 	return l.listener.Accept()
 }
 
-func (l *netListener) Port() int {
+func (l *netListener) Addr() net.Addr {
 	if l.listener == nil {
-		return -1
+		return &net.TCPAddr{}
 	}
 
-	return resolveListenerPort(l.listener)
+	return l.listener.Addr()
 }
 
 func (l *netListener) Close() error {

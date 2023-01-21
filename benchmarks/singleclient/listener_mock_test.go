@@ -16,8 +16,8 @@ func (l *mockListener) Accept() (net.Conn, error) {
 	return <-l.acceptQueue, nil
 }
 
-func (l *mockListener) Port() int {
-	return 0
+func (l *mockListener) Addr() net.Addr {
+	return &net.TCPAddr{}
 }
 
 func (l *mockListener) Close() error {
