@@ -49,8 +49,7 @@ func (s *socketsList) Cleanup() {
 	s.m.Lock()
 	defer s.m.Unlock()
 
-	var socket = s.head
-	for socket != nil {
+	for socket := s.head; socket != nil; {
 		next := socket.next
 
 		if socket.isRecyclable() {
