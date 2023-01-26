@@ -152,8 +152,9 @@ func PacketFramingHandler(
 
 					if c.OnSocketError != nil {
 						c.OnSocketError(socket, err)
-						continue
 					}
+
+					continue
 				}
 			}
 
