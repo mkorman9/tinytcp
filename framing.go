@@ -69,6 +69,9 @@ func mergePacketFramingConfig(provided *PacketFramingConfig) *PacketFramingConfi
 	if provided.MinReadSpace > 0 {
 		config.MinReadSpace = provided.MinReadSpace
 	}
+	if provided.ReadTimeout > 0 {
+		config.ReadTimeout = provided.ReadTimeout
+	}
 
 	if config.MinReadSpace > config.ReadBufferSize {
 		config.MinReadSpace = config.ReadBufferSize / 4
