@@ -41,8 +41,9 @@ type PacketFramingConfig struct {
 	// without allocating auxiliary buffer (default: 1KiB or 1/4 of ReadBufferSize).
 	MinReadSpace int
 
-	// OnReadError is a handler called when Read() encounters an error other than EOF.
-	OnReadError func(*Socket, error)
+	// OnSocketError is a handler called when a socket operation encounters an error other than EOF or a timeout.
+	// (default: defaultSocketError).
+	OnSocketError func(*Socket, error)
 
 	// ReadTimeout specifies the timeout for Read() after which the client is automatically disconnected.
 	// The value of 0 or less, means that the timeout is infinite (default: 0).
@@ -54,6 +55,7 @@ func mergePacketFramingConfig(provided *PacketFramingConfig) *PacketFramingConfi
 		ReadBufferSize: 4 * 1024,  // 4 KiB
 		MaxPacketSize:  16 * 1024, // 16 KiB
 		MinReadSpace:   1024,      // 1 KiB
+		OnSocketError:  defaultSocketError,
 	}
 
 	if provided == nil {
@@ -69,6 +71,9 @@ func mergePacketFramingConfig(provided *PacketFramingConfig) *PacketFramingConfi
 	if provided.MinReadSpace > 0 {
 		config.MinReadSpace = provided.MinReadSpace
 	}
+	if provided.OnSocketError != nil {
+		config.OnSocketError = provided.OnSocketError
+	}
 	if provided.ReadTimeout > 0 {
 		config.ReadTimeout = provided.ReadTimeout
 	}
@@ -78,6 +83,10 @@ func mergePacketFramingConfig(provided *PacketFramingConfig) *PacketFramingConfi
 	}
 
 	return config
+}
+
+func defaultSocketError(_ *Socket, err error) {
+	_, _ = fmt.Fprintf(os.Stderr, "socket error: %v\n", err)
 }
 
 // PacketFramingHandler returns a SocketHandler that handles packet framing according to given FramingProtocol.
@@ -141,8 +150,8 @@ func PacketFramingHandler(
 						break
 					}
 
-					if c.OnReadError != nil {
-						c.OnReadError(socket, err)
+					if c.OnSocketError != nil {
+						c.OnSocketError(socket, err)
 						continue
 					}
 				}
@@ -155,10 +164,8 @@ func PacketFramingHandler(
 					break
 				}
 
-				if c.OnReadError != nil {
-					c.OnReadError(socket, err)
-				} else {
-					_, _ = fmt.Fprintf(os.Stderr, "socket read error: %v\n", err)
+				if c.OnSocketError != nil {
+					c.OnSocketError(socket, err)
 				}
 
 				continue
