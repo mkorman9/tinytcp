@@ -48,6 +48,10 @@ type PacketFramingConfig struct {
 	// ReadTimeout specifies the timeout for Read() after which the client is automatically disconnected.
 	// The value of 0 or less, means that the timeout is infinite (default: 0).
 	ReadTimeout time.Duration
+
+	// NowFunc is a function used to determine current time when handling socket timeout.
+	// (default: time.Now)
+	NowFunc func() time.Time
 }
 
 func mergePacketFramingConfig(provided *PacketFramingConfig) *PacketFramingConfig {
@@ -56,6 +60,7 @@ func mergePacketFramingConfig(provided *PacketFramingConfig) *PacketFramingConfi
 		MaxPacketSize:  16 * 1024, // 16 KiB
 		MinReadSpace:   1024,      // 1 KiB
 		OnSocketError:  defaultSocketError,
+		NowFunc:        time.Now,
 	}
 
 	if provided == nil {
@@ -76,6 +81,9 @@ func mergePacketFramingConfig(provided *PacketFramingConfig) *PacketFramingConfi
 	}
 	if provided.ReadTimeout > 0 {
 		config.ReadTimeout = provided.ReadTimeout
+	}
+	if provided.NowFunc != nil {
+		config.NowFunc = provided.NowFunc
 	}
 
 	if config.MinReadSpace > config.ReadBufferSize {
@@ -144,7 +152,7 @@ func PacketFramingHandler(
 		for {
 			// set read timeout
 			if c.ReadTimeout > 0 {
-				err := socket.SetReadDeadline(time.Now().Add(c.ReadTimeout))
+				err := socket.SetReadDeadline(c.NowFunc().Add(c.ReadTimeout))
 				if err != nil {
 					if err == io.EOF {
 						break
