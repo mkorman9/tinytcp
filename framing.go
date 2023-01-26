@@ -152,7 +152,8 @@ func PacketFramingHandler(
 		for {
 			// set read timeout
 			if c.ReadTimeout > 0 {
-				err := socket.SetReadDeadline(c.NowFunc().Add(c.ReadTimeout))
+				deadline := c.NowFunc().Add(c.ReadTimeout)
+				err := socket.SetReadDeadline(deadline)
 				if err != nil {
 					if err == io.EOF {
 						break
