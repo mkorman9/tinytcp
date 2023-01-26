@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"sync"
+	"time"
 )
 
 // PacketHandler is a function to be called after receiving packet data.
@@ -42,6 +43,10 @@ type PacketFramingConfig struct {
 
 	// OnReadError is a handler called when Read() encounters an error other than EOF.
 	OnReadError func(*Socket, error)
+
+	// ReadTimeout specifies the timeout for Read() after which the client is automatically disconnected.
+	// The value of 0 or less, means that the timeout is infinite (default: 0).
+	ReadTimeout time.Duration
 }
 
 func mergePacketFramingConfig(provided *PacketFramingConfig) *PacketFramingConfig {
@@ -125,9 +130,25 @@ func PacketFramingHandler(
 		}()
 
 		for {
+			// set read timeout
+			if c.ReadTimeout > 0 {
+				err := socket.SetReadDeadline(time.Now().Add(c.ReadTimeout))
+				if err != nil {
+					if err == io.EOF {
+						break
+					}
+
+					if c.OnReadError != nil {
+						c.OnReadError(socket, err)
+						continue
+					}
+				}
+			}
+
+			// read
 			bytesRead, err := socket.Read(readBuffer[rightOffset:])
 			if err != nil {
-				if err == io.EOF {
+				if err == io.EOF || isTimeout(err) {
 					break
 				}
 
