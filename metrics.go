@@ -23,14 +23,8 @@ type ServerMetrics struct {
 	// Connections denotes a total number of clients connected during last second.
 	Connections int
 
-	// MaxConnections is maximum number of clients connected at a single time.
-	MaxConnections int
-
 	// Goroutines is total number of goroutines active during last second.
 	Goroutines int
-
-	// MaxGoroutines is maximum number of goroutines active at a single time.
-	MaxGoroutines int
 }
 
 type meteredReader struct {

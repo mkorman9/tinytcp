@@ -258,9 +258,6 @@ func (s *Server) startBackgroundJob() {
 func (s *Server) updateMetrics() {
 	s.sockets.ExecRead(func(head *Socket) {
 		s.metrics.Connections = s.sockets.Len()
-		if s.metrics.Connections > s.metrics.MaxConnections {
-			s.metrics.MaxConnections = s.metrics.Connections
-		}
 
 		var (
 			readsPerInterval  uint64

@@ -45,9 +45,6 @@ func (g *goroutinePerConnection) OnStop() {
 
 func (g *goroutinePerConnection) OnMetricsUpdate(metrics *ServerMetrics) {
 	metrics.Goroutines = int(atomic.LoadInt32(&g.goroutines))
-	if metrics.Goroutines > metrics.MaxGoroutines {
-		metrics.MaxGoroutines = metrics.Goroutines
-	}
 }
 
 func (g *goroutinePerConnection) OnAccept(socket *Socket) {
