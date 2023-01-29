@@ -52,7 +52,7 @@ func (r *meteredReader) PerSecond() uint64 {
 	return atomic.LoadUint64(&r.rate)
 }
 
-func (r *meteredReader) update(interval time.Duration) uint64 {
+func (r *meteredReader) Update(interval time.Duration) uint64 {
 	current := atomic.SwapUint64(&r.current, 0)
 
 	atomic.StoreUint64(&r.rate, uint64(float64(current)/interval.Seconds()))
@@ -93,7 +93,7 @@ func (w *meteredWriter) PerSecond() uint64 {
 	return atomic.LoadUint64(&w.rate)
 }
 
-func (w *meteredWriter) update(interval time.Duration) uint64 {
+func (w *meteredWriter) Update(interval time.Duration) uint64 {
 	current := atomic.SwapUint64(&w.current, 0)
 
 	atomic.StoreUint64(&w.rate, uint64(float64(current)/interval.Seconds()))

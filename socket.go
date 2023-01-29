@@ -224,7 +224,7 @@ func (s *Socket) onRecycle(handler func()) {
 }
 
 func (s *Socket) updateMetrics(interval time.Duration) (uint64, uint64) {
-	reads := s.meteredReader.update(interval)
-	writes := s.meteredWriter.update(interval)
+	reads := s.meteredReader.Update(interval)
+	writes := s.meteredWriter.Update(interval)
 	return reads, writes
 }
