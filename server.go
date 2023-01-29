@@ -272,8 +272,8 @@ func (s *Server) updateMetrics() {
 
 		s.metrics.TotalRead += readsPerInterval
 		s.metrics.TotalWritten += writesPerInterval
-		s.metrics.ReadsPerSecond = uint64(float64(readsPerInterval) / s.config.TickInterval.Seconds())
-		s.metrics.WritesPerSecond = uint64(float64(writesPerInterval) / s.config.TickInterval.Seconds())
+		s.metrics.ReadLastSecond = uint64(float64(readsPerInterval) / s.config.TickInterval.Seconds())
+		s.metrics.WrittenLastSecond = uint64(float64(writesPerInterval) / s.config.TickInterval.Seconds())
 
 		s.forkingStrategy.OnMetricsUpdate(&s.metrics)
 

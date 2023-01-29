@@ -166,8 +166,8 @@ func (s *Socket) TotalRead() uint64 {
 	return s.meteredReader.Total()
 }
 
-// ReadsPerSecond returns a total number of bytes read through socket this second.
-func (s *Socket) ReadsPerSecond() uint64 {
+// ReadLastSecond returns a total number of bytes read from this socket last second.
+func (s *Socket) ReadLastSecond() uint64 {
 	return s.meteredReader.PerSecond()
 }
 
@@ -176,8 +176,8 @@ func (s *Socket) TotalWritten() uint64 {
 	return s.meteredWriter.Total()
 }
 
-// WritesPerSecond returns a total number of bytes written through socket this second.
-func (s *Socket) WritesPerSecond() uint64 {
+// WrittenLastSecond returns a total number of bytes written to this socket last second.
+func (s *Socket) WrittenLastSecond() uint64 {
 	return s.meteredWriter.PerSecond()
 }
 

@@ -11,8 +11,7 @@ Major features include:
 - Automated packet extraction with no memory allocations (see `LengthPrefixedFraming` or `SplitBySeparator`).
 - Full customization of connection handling process. By default, the sever starts a new goroutine for each connection,
 (`GoroutinePerConnection` strategy), but this can be changed.
-- Metrics collection for both the server and each connected client separately
-(total bytes read/written, volume of traffic per second).
+- Metrics collection for both the server and each connected client separately (optional Prometheus binding).
 - Support for `tcp`, `tcp4`, `tcp6` and `unix` listeners.
 
 ## Install

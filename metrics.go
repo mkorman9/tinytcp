@@ -8,22 +8,22 @@ import (
 
 // ServerMetrics contains metrics collected from TCP server.
 type ServerMetrics struct {
-	// TotalRead is total number of bytes read by server since start.
+	// TotalRead is total number of bytes read by the server.
 	TotalRead uint64
 
-	// TotalRead is total number of bytes written by server since start.
+	// TotalWritten is total number of bytes written by the server.
 	TotalWritten uint64
 
-	// ReadsPerSecond is total number of bytes read by server last second.
-	ReadsPerSecond uint64
+	// ReadLastSecond is total number of bytes read by the server last second.
+	ReadLastSecond uint64
 
-	// ReadsPerSecond is total number of bytes written by server last second.
-	WritesPerSecond uint64
+	// WrittenLastSecond is total number of bytes written by the server last second.
+	WrittenLastSecond uint64
 
-	// Connections denotes a total number of clients connected during last second.
+	// Connections is a total number of active connections during the last second.
 	Connections int
 
-	// Goroutines is total number of goroutines active during last second.
+	// Goroutines is a total number of active goroutines during the last second.
 	Goroutines int
 }
 
