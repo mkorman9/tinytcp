@@ -35,16 +35,6 @@ type SocketHandler func(*Socket)
 // SocketCloseHandler represents a signature of function used by Socket to register custom close handlers.
 type SocketCloseHandler func(CloseReason)
 
-// RemoteAddress returns a remote address of the socket.
-func (s *Socket) RemoteAddress() string {
-	return s.remoteAddress
-}
-
-// ConnectedAt returns an exact time the socket has connected.
-func (s *Socket) ConnectedAt() time.Time {
-	return s.connectedAt
-}
-
 // Close closes underlying TCP connection and executes all the registered close handlers.
 // This method always returns nil, but its signature is meant to stick to the io.Closer interface.
 func (s *Socket) Close(reason ...CloseReason) (err error) {
@@ -142,6 +132,16 @@ func (s *Socket) SetWriteDeadline(deadline time.Time) error {
 	}
 
 	return nil
+}
+
+// RemoteAddress returns a remote address of the socket.
+func (s *Socket) RemoteAddress() string {
+	return s.remoteAddress
+}
+
+// ConnectedAt returns an exact time the socket has connected.
+func (s *Socket) ConnectedAt() time.Time {
+	return s.connectedAt
 }
 
 // OnClose registers a handler that is called when underlying TCP connection is being closed.
