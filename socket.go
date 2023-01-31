@@ -10,7 +10,7 @@ import (
 )
 
 // Socket represents a connected TCP socket.
-// An instance of Socket is only valid inside its designated handler and cannot be stored outside (see SocketReference).
+// An instance of Socket is only valid inside its designated handler and cannot be stored outside (see SocketRef).
 type Socket struct {
 	remoteAddress      string
 	connectedAt        time.Time
