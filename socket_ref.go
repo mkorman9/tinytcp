@@ -3,6 +3,7 @@ package tinytcp
 import (
 	"io"
 	"sync"
+	"time"
 )
 
 // SocketRef allows to hold a reference to a socket outside its designated handler.
@@ -27,6 +28,18 @@ func NewSocketRef(s *Socket) *SocketRef {
 	return ref
 }
 
+// Read reads data from socket only if it hasn't been recycled yet.
+func (r *SocketRef) Read(b []byte) (int, error) {
+	r.m.RLock()
+	defer r.m.RUnlock()
+
+	if r.s == nil {
+		return 0, io.EOF
+	}
+
+	return r.s.Read(b)
+}
+
 // Write writes data to a socket only if it hasn't been recycled yet.
 func (r *SocketRef) Write(b []byte) (int, error) {
 	r.m.RLock()
@@ -37,6 +50,42 @@ func (r *SocketRef) Write(b []byte) (int, error) {
 	}
 
 	return r.s.Write(b)
+}
+
+// Close closes a socket only if it hasn't been recycled yet.
+func (r *SocketRef) Close(reason ...CloseReason) error {
+	r.m.RLock()
+	defer r.m.RUnlock()
+
+	if r.s == nil {
+		return io.EOF
+	}
+
+	return r.s.Close(reason...)
+}
+
+// SetReadDeadline sets read deadline of a socket only if it hasn't been recycled yet.
+func (r *SocketRef) SetReadDeadline(deadline time.Time) error {
+	r.m.RLock()
+	defer r.m.RUnlock()
+
+	if r.s == nil {
+		return io.EOF
+	}
+
+	return r.s.SetReadDeadline(deadline)
+}
+
+// SetWriteDeadline sets write deadline of a socket only if it hasn't been recycled yet.
+func (r *SocketRef) SetWriteDeadline(deadline time.Time) error {
+	r.m.RLock()
+	defer r.m.RUnlock()
+
+	if r.s == nil {
+		return io.EOF
+	}
+
+	return r.s.SetWriteDeadline(deadline)
 }
 
 func (r *SocketRef) onRecycle() {
