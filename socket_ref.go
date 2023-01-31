@@ -76,6 +76,18 @@ func (r *SocketRef) Close(reason ...CloseReason) error {
 	return r.s.Close(reason...)
 }
 
+// SetDeadline sets deadline of a socket only if it hasn't been recycled yet.
+func (r *SocketRef) SetDeadline(deadline time.Time) error {
+	r.m.RLock()
+	defer r.m.RUnlock()
+
+	if r.s == nil {
+		return io.EOF
+	}
+
+	return r.s.SetDeadline(deadline)
+}
+
 // SetReadDeadline sets read deadline of a socket only if it hasn't been recycled yet.
 func (r *SocketRef) SetReadDeadline(deadline time.Time) error {
 	r.m.RLock()
@@ -104,15 +116,11 @@ func (r *SocketRef) onRecycle() {
 	r.unblockReadWrite()
 
 	r.m.Lock()
-	defer r.m.Unlock()
-
 	r.s = nil
+	r.m.Unlock()
 }
 
 func (r *SocketRef) unblockReadWrite() {
 	atomic.StoreUint32(&r.unblocking, 1)
-
-	now := time.Now()
-	_ = r.s.SetReadDeadline(now)
-	_ = r.s.SetWriteDeadline(now)
+	_ = r.s.SetDeadline(time.Now())
 }

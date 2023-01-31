@@ -99,6 +99,21 @@ func (s *Socket) Write(b []byte) (int, error) {
 	return n, nil
 }
 
+// SetDeadline sets deadline for underlying socket.
+func (s *Socket) SetDeadline(deadline time.Time) error {
+	err := s.connection.SetDeadline(deadline)
+	if err != nil {
+		if isBrokenPipe(err) {
+			_ = s.Close(CloseReasonClient)
+			return io.EOF
+		}
+
+		return err
+	}
+
+	return nil
+}
+
 // SetReadDeadline sets read deadline for underlying socket.
 func (s *Socket) SetReadDeadline(deadline time.Time) error {
 	err := s.connection.SetReadDeadline(deadline)
