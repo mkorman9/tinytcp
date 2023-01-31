@@ -9,16 +9,10 @@ import (
 
 // Listener represents a low-level interface used by server to manage its interface.
 type Listener interface {
-	io.Closer
+	net.Listener
 
-	// Listen starts listener.
+	// Listen starts listening. It's expected not to block a calling thread.
 	Listen() error
-
-	// Accept pulls a connection from a queue and returns it or blocks if there is none available.
-	Accept() (net.Conn, error)
-
-	// Addr returns a network address associated with this listener.
-	Addr() net.Addr
 }
 
 type netListener struct {
