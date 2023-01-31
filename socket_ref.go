@@ -3,6 +3,7 @@ package tinytcp
 import (
 	"io"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -14,8 +15,9 @@ import (
 // might result in some very nasty bugs. SocketRef provides a way to safely store a reference to a socket,
 // and provide a subset of its functionalities.
 type SocketRef struct {
-	s *Socket
-	m sync.RWMutex
+	s          *Socket
+	m          sync.RWMutex
+	unblocking uint32
 }
 
 // NewSocketRef creates an instance of SocketReference.
@@ -37,7 +39,12 @@ func (r *SocketRef) Read(b []byte) (int, error) {
 		return 0, io.EOF
 	}
 
-	return r.s.Read(b)
+	n, err := r.s.Read(b)
+	if err != nil && isTimeout(err) && atomic.LoadUint32(&r.unblocking) == 1 {
+		return n, io.EOF
+	}
+
+	return n, err
 }
 
 // Write writes data to a socket only if it hasn't been recycled yet.
@@ -49,7 +56,12 @@ func (r *SocketRef) Write(b []byte) (int, error) {
 		return 0, io.EOF
 	}
 
-	return r.s.Write(b)
+	n, err := r.s.Write(b)
+	if err != nil && isTimeout(err) && atomic.LoadUint32(&r.unblocking) == 1 {
+		return n, io.EOF
+	}
+
+	return n, err
 }
 
 // Close closes a socket only if it hasn't been recycled yet.
@@ -89,8 +101,18 @@ func (r *SocketRef) SetWriteDeadline(deadline time.Time) error {
 }
 
 func (r *SocketRef) onRecycle() {
+	r.unblockReadWrite()
+
 	r.m.Lock()
 	defer r.m.Unlock()
 
 	r.s = nil
+}
+
+func (r *SocketRef) unblockReadWrite() {
+	atomic.StoreUint32(&r.unblocking, 1)
+
+	now := time.Now()
+	_ = r.s.SetReadDeadline(now)
+	_ = r.s.SetWriteDeadline(now)
 }
