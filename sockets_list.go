@@ -33,7 +33,7 @@ func (s *socketsList) New(connection net.Conn) *Socket {
 
 	if registered := s.registerSocket(socket); !registered {
 		// instantly terminate the connection if it can't be added to the pool
-		_ = socket.connection.Close()
+		_ = connection.Close()
 		s.recycleSocket(socket)
 		return nil
 	}
