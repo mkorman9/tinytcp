@@ -3,7 +3,6 @@ package tinytcp
 import (
 	"io"
 	"net"
-	"sync"
 	"time"
 )
 
@@ -61,11 +60,10 @@ func (cm *ConnMock) SetWriteDeadline(_ time.Time) error {
 
 func MockSocket(in io.Reader, out io.Writer) *Socket {
 	return &Socket{
-		remoteAddress: "127.0.0.1",
-		connectedAt:   time.Now(),
-		connection:    &ConnMock{},
-		reader:        in,
-		writer:        out,
-		closeOnce:     &sync.Once{},
+		remoteAddr: "127.0.0.1",
+		timestamp:  time.Now(),
+		conn:       &ConnMock{},
+		reader:     in,
+		writer:     out,
 	}
 }

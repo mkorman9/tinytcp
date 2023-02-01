@@ -75,7 +75,7 @@ func parseRemoteAddress(connection net.Conn) string {
 	address := connection.RemoteAddr().String()
 	host, _, err := net.SplitHostPort(address)
 	if err != nil {
-		return ""
+		return address
 	}
 
 	return host

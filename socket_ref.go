@@ -26,7 +26,7 @@ func NewSocketRef(s *Socket) *SocketRef {
 		s: s,
 	}
 
-	s.onRecycle(ref.onRecycle)
+	s.OnRecycle(ref.onRecycle)
 	return ref
 }
 
@@ -135,6 +135,19 @@ func (r *SocketRef) OnClose(handler SocketCloseHandler) {
 		return
 	}
 
+	r.OnClose(handler)
+}
+
+// OnRecycle registers a handler that is called when the Socket object is being recycled and put back into pool.
+func (r *SocketRef) OnRecycle(handler func()) {
+	r.m.RLock()
+	defer r.m.RUnlock()
+
+	if r.s == nil {
+		return
+	}
+
+	r.OnRecycle(handler)
 }
 
 // Unwrap returns underlying net.Conn instance from Socket.

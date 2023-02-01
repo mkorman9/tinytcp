@@ -12,18 +12,20 @@ import (
 // Socket represents a connected TCP socket.
 // An instance of Socket is only valid inside its designated handler and cannot be stored outside (see SocketRef).
 type Socket struct {
-	remoteAddress      string
-	connectedAt        time.Time
-	connection         net.Conn
-	reader             io.Reader
-	writer             io.Writer
-	meteredReader      *meteredReader
-	meteredWriter      *meteredWriter
-	recyclable         uint32
-	closeOnce          *sync.Once
-	closeHandlers      []SocketCloseHandler
-	closeHandlersMutex sync.RWMutex
-	recycleHandler     func()
+	remoteAddr    string
+	timestamp     time.Time
+	conn          net.Conn
+	reader        io.Reader
+	writer        io.Writer
+	meteredReader *meteredReader
+	meteredWriter *meteredWriter
+
+	closeOnce            sync.Once
+	closeHandlers        []SocketCloseHandler
+	closeHandlersMutex   sync.RWMutex
+	recycleHandlers      []func()
+	recycleHandlersMutex sync.RWMutex
+	recyclable           uint32
 
 	prev *Socket
 	next *Socket
@@ -39,7 +41,7 @@ type SocketCloseHandler func(CloseReason)
 // This method always returns nil, but its signature is meant to stick to the io.Closer interface.
 func (s *Socket) Close(reason ...CloseReason) (err error) {
 	s.closeOnce.Do(func() {
-		if e := s.connection.Close(); e != nil {
+		if e := s.conn.Close(); e != nil {
 			err = e
 		}
 
@@ -91,7 +93,7 @@ func (s *Socket) Write(b []byte) (int, error) {
 
 // SetDeadline sets deadline for underlying socket.
 func (s *Socket) SetDeadline(deadline time.Time) error {
-	err := s.connection.SetDeadline(deadline)
+	err := s.conn.SetDeadline(deadline)
 	if err != nil {
 		if isBrokenPipe(err) {
 			_ = s.Close(CloseReasonClient)
@@ -106,7 +108,7 @@ func (s *Socket) SetDeadline(deadline time.Time) error {
 
 // SetReadDeadline sets read deadline for underlying socket.
 func (s *Socket) SetReadDeadline(deadline time.Time) error {
-	err := s.connection.SetReadDeadline(deadline)
+	err := s.conn.SetReadDeadline(deadline)
 	if err != nil {
 		if isBrokenPipe(err) {
 			_ = s.Close(CloseReasonClient)
@@ -121,7 +123,7 @@ func (s *Socket) SetReadDeadline(deadline time.Time) error {
 
 // SetWriteDeadline sets read deadline for underlying socket.
 func (s *Socket) SetWriteDeadline(deadline time.Time) error {
-	err := s.connection.SetWriteDeadline(deadline)
+	err := s.conn.SetWriteDeadline(deadline)
 	if err != nil {
 		if isBrokenPipe(err) {
 			_ = s.Close(CloseReasonClient)
@@ -136,12 +138,12 @@ func (s *Socket) SetWriteDeadline(deadline time.Time) error {
 
 // RemoteAddress returns a remote address of the socket.
 func (s *Socket) RemoteAddress() string {
-	return s.remoteAddress
+	return s.remoteAddr
 }
 
 // ConnectedAt returns an exact time the socket has connected.
 func (s *Socket) ConnectedAt() time.Time {
-	return s.connectedAt
+	return s.timestamp
 }
 
 // OnClose registers a handler that is called when underlying TCP connection is being closed.
@@ -152,14 +154,22 @@ func (s *Socket) OnClose(handler SocketCloseHandler) {
 	s.closeHandlers = append(s.closeHandlers, handler)
 }
 
+// OnRecycle registers a handler that is called when the Socket object is being recycled and put back into pool.
+func (s *Socket) OnRecycle(handler func()) {
+	s.recycleHandlersMutex.Lock()
+	defer s.recycleHandlersMutex.Unlock()
+
+	s.recycleHandlers = append(s.recycleHandlers, handler)
+}
+
 // Unwrap returns underlying net.Conn instance from Socket.
 func (s *Socket) Unwrap() net.Conn {
-	return s.connection
+	return s.conn
 }
 
 // UnwrapTLS tries to return underlying tls.Conn instance from Socket.
 func (s *Socket) UnwrapTLS() (*tls.Conn, bool) {
-	if conn, ok := s.connection.(*tls.Conn); ok {
+	if conn, ok := s.conn.(*tls.Conn); ok {
 		return conn, true
 	}
 
@@ -197,45 +207,44 @@ func (s *Socket) WrittenLastSecond() uint64 {
 }
 
 func (s *Socket) init(conn net.Conn) {
-	s.remoteAddress = parseRemoteAddress(conn)
-	s.connectedAt = time.Now()
-	s.connection = conn
+	s.remoteAddr = parseRemoteAddress(conn)
+	s.timestamp = time.Now()
+	s.conn = conn
 	s.meteredReader.reader = conn
 	s.meteredWriter.writer = conn
 	s.reader = s.meteredReader
 	s.writer = s.meteredWriter
-	s.closeOnce = &sync.Once{}
-	s.closeHandlersMutex = sync.RWMutex{}
 }
 
 func (s *Socket) reset() {
-	s.remoteAddress = ""
-	s.connection = nil
+	s.remoteAddr = ""
+	s.conn = nil
 	s.meteredReader.reset()
 	s.meteredWriter.reset()
 	s.recyclable = 0
-	s.closeOnce = nil
 	s.closeHandlers = nil
-	s.recycleHandler = nil
+	s.recycleHandlers = nil
+	s.closeOnce = sync.Once{}
+	s.closeHandlersMutex = sync.RWMutex{}
+	s.recycleHandlersMutex = sync.RWMutex{}
 
 	s.prev = nil
 	s.next = nil
 }
 
 func (s *Socket) recycle() {
-	if s.recycleHandler != nil {
-		s.recycleHandler()
+	s.recycleHandlersMutex.RLock()
+	for i := len(s.recycleHandlers) - 1; i >= 0; i-- {
+		handler := s.recycleHandlers[i]
+		handler()
 	}
+	s.recycleHandlersMutex.RUnlock()
 
 	atomic.StoreUint32(&s.recyclable, 1)
 }
 
 func (s *Socket) isRecyclable() bool {
 	return atomic.LoadUint32(&s.recyclable) == 1
-}
-
-func (s *Socket) onRecycle(handler func()) {
-	s.recycleHandler = handler
 }
 
 func (s *Socket) updateMetrics(interval time.Duration) (uint64, uint64) {
