@@ -13,7 +13,7 @@ import (
 // An instance of Socket is only valid inside its designated handler and cannot be stored outside (see SocketRef).
 type Socket struct {
 	remoteAddr    string
-	timestamp     time.Time
+	timestamp     int64
 	conn          net.Conn
 	reader        io.Reader
 	writer        io.Writer
@@ -140,8 +140,8 @@ func (s *Socket) RemoteAddress() string {
 	return s.remoteAddr
 }
 
-// ConnectedAt returns an exact time the socket has connected.
-func (s *Socket) ConnectedAt() time.Time {
+// ConnectedAt returns a unix timestamp indicating the exact moment the socket has connected (UTC, in milliseconds).
+func (s *Socket) ConnectedAt() int64 {
 	return s.timestamp
 }
 
@@ -207,7 +207,7 @@ func (s *Socket) WrittenLastSecond() uint64 {
 
 func (s *Socket) init(conn net.Conn) {
 	s.remoteAddr = parseRemoteAddress(conn)
-	s.timestamp = time.Now()
+	s.timestamp = time.Now().UTC().UnixMilli()
 	s.conn = conn
 	s.meteredReader.reader = conn
 	s.meteredWriter.writer = conn

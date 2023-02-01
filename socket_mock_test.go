@@ -61,7 +61,7 @@ func (cm *ConnMock) SetWriteDeadline(_ time.Time) error {
 func MockSocket(in io.Reader, out io.Writer) *Socket {
 	return &Socket{
 		remoteAddr: "127.0.0.1",
-		timestamp:  time.Now(),
+		timestamp:  time.Now().UTC().UnixMilli(),
 		conn:       &ConnMock{},
 		reader:     in,
 		writer:     out,

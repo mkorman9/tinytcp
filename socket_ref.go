@@ -114,13 +114,13 @@ func (r *SocketRef) RemoteAddress() string {
 	return r.s.RemoteAddress()
 }
 
-// ConnectedAt returns an exact time the socket has connected.
-func (r *SocketRef) ConnectedAt() time.Time {
+// ConnectedAt returns a unix timestamp indicating the exact moment the socket has connected (UTC, in milliseconds).
+func (r *SocketRef) ConnectedAt() int64 {
 	r.m.RLock()
 	defer r.m.RUnlock()
 
 	if r.s == nil {
-		return time.UnixMilli(0)
+		return 0
 	}
 
 	return r.s.ConnectedAt()
