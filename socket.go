@@ -38,7 +38,6 @@ type SocketHandler func(*Socket)
 type SocketCloseHandler func(CloseReason)
 
 // Close closes underlying TCP connection and executes all the registered close handlers.
-// This method always returns nil, but its signature is meant to stick to the io.Closer interface.
 func (s *Socket) Close(reason ...CloseReason) (err error) {
 	s.closeOnce.Do(func() {
 		if e := s.conn.Close(); e != nil {
