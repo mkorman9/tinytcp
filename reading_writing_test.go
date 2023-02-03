@@ -26,26 +26,6 @@ func TestReadByte(t *testing.T) {
 	assert.Equal(t, value, readValue, "values should match")
 }
 
-func TestReadBytes(t *testing.T) {
-	// given
-	var buffer bytes.Buffer
-
-	value := []byte("AAA")
-
-	// when then
-	err := WriteBytes(&buffer, value)
-	if err != nil {
-		assert.Nil(t, err, "write err should be nil")
-	}
-
-	readValue, err := ReadBytes(&buffer, len(value))
-	if err != nil {
-		assert.Nil(t, err, "read err should be nil")
-	}
-
-	assert.Equal(t, value, readValue, "values should match")
-}
-
 func TestReadBool(t *testing.T) {
 	// given
 	var buffer bytes.Buffer
@@ -199,46 +179,6 @@ func TestReadFloat64(t *testing.T) {
 	}
 
 	readValue, err := ReadFloat64(&buffer)
-	if err != nil {
-		assert.Nil(t, err, "read err should be nil")
-	}
-
-	assert.Equal(t, value, readValue, "values should match")
-}
-
-func TestReadByteArray(t *testing.T) {
-	// given
-	var buffer bytes.Buffer
-
-	value := []byte("Hello world")
-
-	// when then
-	err := WriteByteArray(&buffer, value)
-	if err != nil {
-		assert.Nil(t, err, "write err should be nil")
-	}
-
-	readValue, err := ReadByteArray(&buffer)
-	if err != nil {
-		assert.Nil(t, err, "read err should be nil")
-	}
-
-	assert.Equal(t, value, readValue, "values should match")
-}
-
-func TestReadString(t *testing.T) {
-	// given
-	var buffer bytes.Buffer
-
-	value := "Hello world"
-
-	// when then
-	err := WriteString(&buffer, value)
-	if err != nil {
-		assert.Nil(t, err, "write err should be nil")
-	}
-
-	readValue, err := ReadString(&buffer)
 	if err != nil {
 		assert.Nil(t, err, "read err should be nil")
 	}

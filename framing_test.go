@@ -266,7 +266,8 @@ func generateTestPayloadWithSeparator(n int) []byte {
 
 func generateVarIntTestPayload(n int) []byte {
 	var buff bytes.Buffer
-	_ = WriteByteArray(&buff, generateTestPayload(n))
+	_ = WriteVarInt(&buff, n)
+	_ = WriteBytes(&buff, generateTestPayload(n))
 	return buff.Bytes()
 }
 

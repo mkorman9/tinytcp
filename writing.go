@@ -131,19 +131,3 @@ func WriteVarLong(writer io.Writer, value int64) error {
 
 	return nil
 }
-
-// WriteByteArray writes byte array into given writer.
-func WriteByteArray(writer io.Writer, value []byte) error {
-	err := WriteVarInt(writer, len(value))
-	if err != nil {
-		return err
-	}
-
-	err = WriteBytes(writer, value)
-	return err
-}
-
-// WriteString writes string into given writer.
-func WriteString(writer io.Writer, value string) error {
-	return WriteByteArray(writer, []byte(value))
-}

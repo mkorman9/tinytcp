@@ -7,26 +7,10 @@ import (
 	"math"
 )
 
-// ReadBytes reads bytes from given reader.
-func ReadBytes(reader io.Reader, n int) ([]byte, error) {
-	buffer := make([]byte, n)
-	remainingBytes := n
-
-	for remainingBytes > 0 {
-		bytesRead, err := reader.Read(buffer[n-remainingBytes:])
-		if err != nil {
-			return nil, err
-		}
-
-		remainingBytes -= bytesRead
-	}
-
-	return buffer, nil
-}
-
 // ReadByte reads byte from given reader.
 func ReadByte(reader io.Reader) (byte, error) {
-	buff, err := ReadBytes(reader, 1)
+	var buff [1]byte
+	_, err := reader.Read(buff[:])
 	if err != nil {
 		return 0, err
 	}
@@ -50,7 +34,8 @@ func ReadBool(reader io.Reader) (bool, error) {
 
 // ReadInt16 reads int16 from given reader.
 func ReadInt16(reader io.Reader, byteOrder ...binary.ByteOrder) (int16, error) {
-	b, err := ReadBytes(reader, 2)
+	var buff [2]byte
+	_, err := reader.Read(buff[:])
 	if err != nil {
 		return 0, err
 	}
@@ -60,12 +45,13 @@ func ReadInt16(reader io.Reader, byteOrder ...binary.ByteOrder) (int16, error) {
 		order = byteOrder[0]
 	}
 
-	return int16(order.Uint16(b)), nil
+	return int16(order.Uint16(buff[:])), nil
 }
 
 // ReadInt32 reads int32 from given reader.
 func ReadInt32(reader io.Reader, byteOrder ...binary.ByteOrder) (int32, error) {
-	b, err := ReadBytes(reader, 4)
+	var buff [4]byte
+	_, err := reader.Read(buff[:])
 	if err != nil {
 		return 0, err
 	}
@@ -75,12 +61,13 @@ func ReadInt32(reader io.Reader, byteOrder ...binary.ByteOrder) (int32, error) {
 		order = byteOrder[0]
 	}
 
-	return int32(order.Uint32(b)), nil
+	return int32(order.Uint32(buff[:])), nil
 }
 
 // ReadInt64 reads int64 from given reader.
 func ReadInt64(reader io.Reader, byteOrder ...binary.ByteOrder) (int64, error) {
-	b, err := ReadBytes(reader, 8)
+	var buff [8]byte
+	_, err := reader.Read(buff[:])
 	if err != nil {
 		return 0, err
 	}
@@ -90,7 +77,7 @@ func ReadInt64(reader io.Reader, byteOrder ...binary.ByteOrder) (int64, error) {
 		order = byteOrder[0]
 	}
 
-	return int64(order.Uint64(b)), nil
+	return int64(order.Uint64(buff[:])), nil
 }
 
 // ReadVarInt reads var int from given reader.
@@ -165,24 +152,4 @@ func ReadFloat64(reader io.Reader, byteOrder ...binary.ByteOrder) (float64, erro
 	}
 
 	return math.Float64frombits(uint64(value)), nil
-}
-
-// ReadByteArray reads byte array from given reader.
-func ReadByteArray(reader io.Reader) ([]byte, error) {
-	length, err := ReadVarInt(reader)
-	if err != nil {
-		return nil, err
-	}
-
-	return ReadBytes(reader, length)
-}
-
-// ReadString reads string from given reader.
-func ReadString(reader io.Reader) (string, error) {
-	b, err := ReadByteArray(reader)
-	if err != nil {
-		return "", err
-	}
-
-	return string(b), nil
 }
