@@ -53,17 +53,20 @@ func (l *netListener) Listen() error {
 }
 
 func (l *netListener) Accept() (net.Conn, error) {
+	var ln net.Listener
+
 	l.m.RLock()
+	{
+		if l.listener == nil {
+			l.m.RUnlock()
+			return nil, io.EOF
+		}
 
-	if l.listener == nil {
-		l.m.RUnlock()
-		return nil, io.EOF
+		ln = l.listener
 	}
-
-	listener := l.listener
 	l.m.RUnlock()
 
-	return listener.Accept()
+	return ln.Accept()
 }
 
 func (l *netListener) Addr() net.Addr {

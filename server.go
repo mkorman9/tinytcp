@@ -117,27 +117,31 @@ func (s *Server) OnAcceptError(handler func(error)) {
 // Start starts TCP server and blocks until Stop() or Abort() are called.
 func (s *Server) Start() error {
 	s.runningMutex.Lock()
+	{
+		if s.listener == nil {
+			s.runningMutex.Unlock()
+			return errors.New("empty listener")
+		}
+		if s.forkingStrategy == nil {
+			s.runningMutex.Unlock()
+			return errors.New("empty forking strategy")
+		}
 
-	if s.listener == nil {
-		return errors.New("empty listener")
+		err := s.listener.Listen()
+		if err != nil {
+			s.runningMutex.Unlock()
+			return err
+		}
+
+		s.startBackgroundJob()
+		s.forkingStrategy.OnStart(s.socketPanicHandler)
+
+		if s.startHandler != nil {
+			s.startHandler()
+		}
+
+		atomic.StoreInt32(&s.isRunning, 1)
 	}
-	if s.forkingStrategy == nil {
-		return errors.New("empty forking strategy")
-	}
-
-	err := s.listener.Listen()
-	if err != nil {
-		return err
-	}
-
-	s.startBackgroundJob()
-	s.forkingStrategy.OnStart(s.socketPanicHandler)
-
-	if s.startHandler != nil {
-		s.startHandler()
-	}
-
-	atomic.StoreInt32(&s.isRunning, 1)
 	s.runningMutex.Unlock()
 
 	return s.acceptLoop()

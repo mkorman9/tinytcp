@@ -50,9 +50,11 @@ func (s *Socket) Close(reason ...CloseReason) (err error) {
 		}
 
 		s.closeHandlersMutex.RLock()
-		for i := len(s.closeHandlers) - 1; i >= 0; i-- {
-			handler := s.closeHandlers[i]
-			handler(r)
+		{
+			for i := len(s.closeHandlers) - 1; i >= 0; i-- {
+				handler := s.closeHandlers[i]
+				handler(r)
+			}
 		}
 		s.closeHandlersMutex.RUnlock()
 	})
@@ -233,9 +235,11 @@ func (s *Socket) reset() {
 
 func (s *Socket) recycle() {
 	s.recycleHandlersMutex.RLock()
-	for i := len(s.recycleHandlers) - 1; i >= 0; i-- {
-		handler := s.recycleHandlers[i]
-		handler()
+	{
+		for i := len(s.recycleHandlers) - 1; i >= 0; i-- {
+			handler := s.recycleHandlers[i]
+			handler()
+		}
 	}
 	s.recycleHandlersMutex.RUnlock()
 
