@@ -211,15 +211,12 @@ func (s *Server) acceptLoop() error {
 		s.handleNewConnection(connection)
 	}
 
-	var err error
 	select {
-	case e := <-s.errorChannel:
-		err = e
+	case err := <-s.errorChannel:
+		return err
 	default:
-		err = nil
+		return nil
 	}
-
-	return err
 }
 
 func (s *Server) handleNewConnection(connection net.Conn) {
