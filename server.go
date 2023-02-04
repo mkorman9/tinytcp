@@ -167,14 +167,7 @@ func (s *Server) Stop() (err error) {
 	}
 	s.ticker = nil
 
-	s.sockets.ExecWrite(func(head *Socket) {
-		for socket := head; socket != nil; socket = socket.next {
-			_ = socket.Close()
-			socket.recycle()
-		}
-	})
-	s.sockets.Cleanup()
-
+	s.sockets.Reset()
 	s.forkingStrategy.OnStop()
 
 	if s.stopHandler != nil {
@@ -257,29 +250,26 @@ func (s *Server) startBackgroundJob() {
 }
 
 func (s *Server) updateMetrics() {
-	s.sockets.ExecRead(func(head *Socket) {
-		s.metrics.Connections = s.sockets.Len()
+	var (
+		readsPerInterval  uint64
+		writesPerInterval uint64
+	)
 
-		var (
-			readsPerInterval  uint64
-			writesPerInterval uint64
-		)
-
-		for socket := head; socket != nil; socket = socket.next {
-			reads, writes := socket.updateMetrics(s.config.TickInterval)
-			readsPerInterval += reads
-			writesPerInterval += writes
-		}
-
-		s.metrics.TotalRead += readsPerInterval
-		s.metrics.TotalWritten += writesPerInterval
-		s.metrics.ReadLastSecond = uint64(float64(readsPerInterval) / s.config.TickInterval.Seconds())
-		s.metrics.WrittenLastSecond = uint64(float64(writesPerInterval) / s.config.TickInterval.Seconds())
-
-		s.forkingStrategy.OnMetricsUpdate(&s.metrics)
-
-		if s.metricsUpdateHandler != nil {
-			s.metricsUpdateHandler(s.metrics)
-		}
+	s.sockets.Iterate(func(socket *Socket) {
+		reads, writes := socket.updateMetrics(s.config.TickInterval)
+		readsPerInterval += reads
+		writesPerInterval += writes
 	})
+
+	s.metrics.Connections = s.sockets.Len()
+	s.metrics.TotalRead += readsPerInterval
+	s.metrics.TotalWritten += writesPerInterval
+	s.metrics.ReadLastSecond = uint64(float64(readsPerInterval) / s.config.TickInterval.Seconds())
+	s.metrics.WrittenLastSecond = uint64(float64(writesPerInterval) / s.config.TickInterval.Seconds())
+
+	s.forkingStrategy.OnMetricsUpdate(&s.metrics)
+
+	if s.metricsUpdateHandler != nil {
+		s.metricsUpdateHandler(s.metrics)
+	}
 }

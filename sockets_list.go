@@ -42,6 +42,9 @@ func (s *socketsList) New(connection net.Conn) *Socket {
 }
 
 func (s *socketsList) Len() int {
+	s.m.RLock()
+	defer s.m.RUnlock()
+
 	return s.size
 }
 
@@ -72,18 +75,28 @@ func (s *socketsList) Cleanup() {
 	}
 }
 
-func (s *socketsList) ExecRead(f func(head *Socket)) {
+func (s *socketsList) Iterate(fn func(s *Socket)) {
 	s.m.RLock()
 	defer s.m.RUnlock()
 
-	f(s.head)
+	for socket := s.head; socket != nil; socket = socket.next {
+		fn(socket)
+	}
 }
 
-func (s *socketsList) ExecWrite(f func(head *Socket)) {
+func (s *socketsList) Reset() {
 	s.m.Lock()
 	defer s.m.Unlock()
 
-	f(s.head)
+	for socket := s.head; socket != nil; socket = socket.next {
+		_ = socket.Close()
+		socket.recycle()
+		s.recycleSocket(socket)
+	}
+
+	s.head = nil
+	s.tail = nil
+	s.size = 0
 }
 
 func (s *socketsList) newSocket(connection net.Conn) *Socket {
