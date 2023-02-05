@@ -162,11 +162,7 @@ func (s *Server) Stop() (err error) {
 		}
 	}
 
-	if s.ticker != nil {
-		s.ticker.Stop()
-	}
-	s.ticker = nil
-
+	s.stopBackgroundJob()
 	s.sockets.Reset()
 	s.forkingStrategy.OnStop()
 
@@ -247,6 +243,14 @@ func (s *Server) startBackgroundJob() {
 			s.sockets.Cleanup()
 		}
 	}()
+}
+
+func (s *Server) stopBackgroundJob() {
+	if s.ticker != nil {
+		s.ticker.Stop()
+	}
+
+	s.ticker = nil
 }
 
 func (s *Server) updateMetrics() {
