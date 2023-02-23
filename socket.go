@@ -213,8 +213,6 @@ func (s *Socket) init(conn net.Conn) {
 	s.conn = conn
 	s.meteredReader.reader = conn
 	s.meteredWriter.writer = conn
-	s.reader = s.meteredReader
-	s.writer = s.meteredWriter
 }
 
 func (s *Socket) reset() {
@@ -222,6 +220,8 @@ func (s *Socket) reset() {
 	s.conn = nil
 	s.meteredReader.reset()
 	s.meteredWriter.reset()
+	s.reader = s.meteredReader
+	s.writer = s.meteredWriter
 	s.recyclable = 0
 	s.closeHandlers = nil
 	s.recycleHandlers = nil
