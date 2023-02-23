@@ -23,7 +23,7 @@ type Service interface {
 // StartAndBlock starts all passed services in their designated goroutines and then blocks the current thread.
 // Thread is unblocked when the process receives SIGINT or SIGTERM signals or one of the Start() functions returns an error.
 // When exiting, StartAndBlock gracefully stops all the services by calling their Stop() functions and waiting for them to exit.
-func StartAndBlock(services ...Service) error {
+func StartAndBlock(services ...Service) (err error) {
 	errorChannel := make(chan error)
 
 	for _, service := range services {
@@ -58,20 +58,21 @@ func StartAndBlock(services ...Service) error {
 			go func() {
 				defer func() {
 					if r := recover(); r != nil {
-						_, _ = fmt.Fprintf(os.Stderr, "Panic while stopping service: %v\n", r)
+						err = fmt.Errorf("%v", r)
 					}
 
 					wg.Done()
 				}()
 
-				s.Stop()
+				err = s.Stop()
 			}()
 		}
 
 		wg.Wait()
 	}()
 
-	return blockThread(errorChannel)
+	err = blockThread(errorChannel)
+	return
 }
 
 func blockThread(errorChannel <-chan error) error {
