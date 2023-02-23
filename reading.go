@@ -25,11 +25,7 @@ func ReadBool(reader io.Reader) (bool, error) {
 		return false, err
 	}
 
-	if value > 0 {
-		return true, nil
-	} else {
-		return false, nil
-	}
+	return value > 0, nil
 }
 
 // ReadInt16 reads int16 from given reader.

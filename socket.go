@@ -234,6 +234,8 @@ func (s *Socket) reset() {
 }
 
 func (s *Socket) recycle() {
+	_ = s.Close()
+
 	s.recycleHandlersMutex.RLock()
 	{
 		for i := len(s.recycleHandlers) - 1; i >= 0; i-- {
