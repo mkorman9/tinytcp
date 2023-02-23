@@ -116,20 +116,19 @@ func (s *Server) OnAcceptError(handler func(error)) {
 
 // Start starts TCP server and blocks until Stop() or Abort() are called.
 func (s *Server) Start() error {
-	s.runningMutex.Lock()
-	{
+	err := func() error {
+		s.runningMutex.Lock()
+		defer s.runningMutex.Unlock()
+
 		if s.listener == nil {
-			s.runningMutex.Unlock()
 			return errors.New("empty listener")
 		}
 		if s.forkingStrategy == nil {
-			s.runningMutex.Unlock()
 			return errors.New("empty forking strategy")
 		}
 
 		err := s.listener.Listen()
 		if err != nil {
-			s.runningMutex.Unlock()
 			return err
 		}
 
@@ -141,8 +140,12 @@ func (s *Server) Start() error {
 		}
 
 		atomic.StoreInt32(&s.isRunning, 1)
+		return nil
+	}()
+
+	if err != nil {
+		return err
 	}
-	s.runningMutex.Unlock()
 
 	return s.acceptLoop()
 }
