@@ -3,9 +3,7 @@ package tinytcp
 import (
 	"bytes"
 	"encoding/binary"
-	"fmt"
 	"io"
-	"os"
 	"sync"
 	"time"
 )
@@ -42,7 +40,6 @@ type PacketFramingConfig struct {
 	MinReadSpace int
 
 	// OnSocketError is a handler called when a socket operation encounters an error other than EOF or a timeout.
-	// (default: defaultSocketError).
 	OnSocketError func(*Socket, error)
 
 	// ReadTimeout specifies the timeout for Read() after which the client is automatically disconnected.
@@ -59,7 +56,7 @@ func mergePacketFramingConfig(provided *PacketFramingConfig) *PacketFramingConfi
 		ReadBufferSize: 4 * 1024,  // 4 KiB
 		MaxPacketSize:  16 * 1024, // 16 KiB
 		MinReadSpace:   1024,      // 1 KiB
-		OnSocketError:  defaultSocketError,
+		OnSocketError:  func(_ *Socket, _ error) {},
 		NowFunc:        time.Now,
 	}
 
@@ -91,10 +88,6 @@ func mergePacketFramingConfig(provided *PacketFramingConfig) *PacketFramingConfi
 	}
 
 	return config
-}
-
-func defaultSocketError(_ *Socket, err error) {
-	_, _ = fmt.Fprintf(os.Stderr, "socket error: %v\n", err)
 }
 
 // PacketFramingHandler returns a SocketHandler that handles packet framing according to given FramingProtocol.
@@ -159,10 +152,7 @@ func PacketFramingHandler(
 						break
 					}
 
-					if c.OnSocketError != nil {
-						c.OnSocketError(socket, err)
-					}
-
+					c.OnSocketError(socket, err)
 					continue
 				}
 			}
@@ -174,10 +164,7 @@ func PacketFramingHandler(
 					break
 				}
 
-				if c.OnSocketError != nil {
-					c.OnSocketError(socket, err)
-				}
-
+				c.OnSocketError(socket, err)
 				continue
 			}
 

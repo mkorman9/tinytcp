@@ -12,7 +12,7 @@ import (
 // so other implementations (like worker pool) may be implemented on top of this interface.
 type ForkingStrategy interface {
 	// OnStart is called once, after server start.
-	OnStart(panicHandler func(error))
+	OnStart()
 
 	// OnAccept is called for every connection accepted by the server.
 	// The implementation should handle all the interactions with the socket,
@@ -36,8 +36,7 @@ type goroutinePerConnection struct {
 	panicHandler func(error)
 }
 
-func (g *goroutinePerConnection) OnStart(panicHandler func(error)) {
-	g.panicHandler = panicHandler
+func (g *goroutinePerConnection) OnStart() {
 }
 
 func (g *goroutinePerConnection) OnStop() {
@@ -51,9 +50,7 @@ func (g *goroutinePerConnection) OnAccept(socket *Socket) {
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
-				if g.panicHandler != nil {
-					g.panicHandler(fmt.Errorf("%v", r))
-				}
+				g.panicHandler(fmt.Errorf("%v", r))
 			}
 		}()
 
@@ -64,9 +61,7 @@ func (g *goroutinePerConnection) OnAccept(socket *Socket) {
 
 		atomic.AddInt32(&g.goroutines, 1)
 
-		if g.handler != nil {
-			g.handler(socket)
-		}
+		g.handler(socket)
 	}()
 }
 
@@ -75,8 +70,14 @@ func (g *goroutinePerConnection) OnAccept(socket *Socket) {
 // It starts a new goroutine for every new connection. The handler associated with the connection will be responsible
 // for handling blocking operations on this connection.
 // Connections are automatically closed after their handler finishes.
-func GoroutinePerConnection(handler SocketHandler) ForkingStrategy {
+func GoroutinePerConnection(socketHandler SocketHandler, panicHandler ...func(error)) ForkingStrategy {
+	ph := func(_ error) {}
+	if panicHandler != nil {
+		ph = panicHandler[0]
+	}
+
 	return &goroutinePerConnection{
-		handler: handler,
+		handler:      socketHandler,
+		panicHandler: ph,
 	}
 }

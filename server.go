@@ -28,9 +28,6 @@ type Server struct {
 	metricsUpdateHandler func(ServerMetrics)
 	startHandler         func()
 	stopHandler          func()
-	socketPanicHandler   func(error)
-	serverPanicHandler   func(error)
-	acceptErrorHandler   func(error)
 }
 
 // NewServer returns new Server instance.
@@ -42,11 +39,14 @@ func NewServer(address string, config ...*ServerConfig) *Server {
 	c := mergeServerConfig(providedConfig)
 
 	return &Server{
-		config:       c,
-		address:      address,
-		listener:     newListener(address, c),
-		sockets:      newSocketsList(c.MaxClients),
-		errorChannel: make(chan error, 1),
+		config:               c,
+		address:              address,
+		listener:             newListener(address, c),
+		sockets:              newSocketsList(c.MaxClients),
+		errorChannel:         make(chan error, 1),
+		metricsUpdateHandler: func(_ ServerMetrics) {},
+		startHandler:         func() {},
+		stopHandler:          func() {},
 	}
 }
 
@@ -99,21 +99,6 @@ func (s *Server) OnStop(handler func()) {
 	s.stopHandler = handler
 }
 
-// OnServerPanic sets a handler for panics inside server code.
-func (s *Server) OnServerPanic(handler func(error)) {
-	s.serverPanicHandler = handler
-}
-
-// OnSocketPanic sets a handler for panics inside socket handlers.
-func (s *Server) OnSocketPanic(handler func(error)) {
-	s.socketPanicHandler = handler
-}
-
-// OnAcceptError sets a handler for errors returned by Accept().
-func (s *Server) OnAcceptError(handler func(error)) {
-	s.acceptErrorHandler = handler
-}
-
 // Start starts TCP server and blocks until Stop() or Abort() are called.
 func (s *Server) Start() error {
 	err := func() error {
@@ -133,11 +118,8 @@ func (s *Server) Start() error {
 		}
 
 		s.startBackgroundJob()
-		s.forkingStrategy.OnStart(s.socketPanicHandler)
-
-		if s.startHandler != nil {
-			s.startHandler()
-		}
+		s.forkingStrategy.OnStart()
+		s.startHandler()
 
 		atomic.StoreInt32(&s.isRunning, 1)
 		return nil
@@ -168,10 +150,7 @@ func (s *Server) Stop() (err error) {
 	s.stopBackgroundJob()
 	s.sockets.Reset()
 	s.forkingStrategy.OnStop()
-
-	if s.stopHandler != nil {
-		s.stopHandler()
-	}
+	s.stopHandler()
 
 	return
 }
@@ -198,9 +177,6 @@ func (s *Server) acceptLoop() error {
 				break
 			}
 
-			if s.acceptErrorHandler != nil {
-				s.acceptErrorHandler(err)
-			}
 			continue
 		}
 
@@ -228,12 +204,7 @@ func (s *Server) startBackgroundJob() {
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
-				err := errors.New("server background job restart loop")
-
-				if s.serverPanicHandler != nil {
-					s.serverPanicHandler(err)
-				}
-				_ = s.Abort(err)
+				_ = s.Abort(errors.New("panic inside server background job"))
 			}
 		}()
 
@@ -275,8 +246,5 @@ func (s *Server) updateMetrics() {
 	s.metrics.WrittenLastSecond = uint64(float64(writesPerInterval) / s.config.TickInterval.Seconds())
 
 	s.forkingStrategy.OnMetricsUpdate(&s.metrics)
-
-	if s.metricsUpdateHandler != nil {
-		s.metricsUpdateHandler(s.metrics)
-	}
+	s.metricsUpdateHandler(s.metrics)
 }
