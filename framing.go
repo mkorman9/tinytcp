@@ -23,8 +23,7 @@ type separatorFramingProtocol struct {
 }
 
 type lengthPrefixedFramingProtocol struct {
-	prefixType   PrefixType
-	prefixLength int
+	prefix PrefixType
 }
 
 // PacketFramingConfig hold configuration for PacketFramingHandler.
@@ -249,39 +248,21 @@ func (s *separatorFramingProtocol) ExtractPacket(buffer []byte) ([]byte, []byte,
 
 // LengthPrefixedFraming is a FramingProtocol that expects each packet to be prefixed with its length in bytes.
 // Length is expected to be provided as binary encoded number with size and endianness specified by value provided
-// as prefixType argument.
-func LengthPrefixedFraming(prefixType PrefixType) FramingProtocol {
-	var prefixLength int
-
-	switch prefixType {
-	case PrefixInt16_BE:
-		fallthrough
-	case PrefixInt16_LE:
-		prefixLength = 2
-	case PrefixInt32_BE:
-		fallthrough
-	case PrefixInt32_LE:
-		prefixLength = 4
-	case PrefixInt64_BE:
-		fallthrough
-	case PrefixInt64_LE:
-		prefixLength = 8
-	}
-
+// as prefix argument.
+func LengthPrefixedFraming(prefix PrefixType) FramingProtocol {
 	return &lengthPrefixedFramingProtocol{
-		prefixType:   prefixType,
-		prefixLength: prefixLength,
+		prefix: prefix,
 	}
 }
 
 func (l *lengthPrefixedFramingProtocol) ExtractPacket(buffer []byte) ([]byte, []byte, bool) {
 	var (
-		prefixLength = l.prefixLength
+		prefixLength = l.prefix.Size()
 		packetSize   int64
 	)
 
 	if len(buffer) >= prefixLength {
-		switch l.prefixType {
+		switch l.prefix {
 		case PrefixVarInt:
 			valueRead := false
 			prefixLength, packetSize, valueRead = readVarIntPacketSize(buffer)

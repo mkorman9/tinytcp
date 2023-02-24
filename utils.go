@@ -39,6 +39,30 @@ const (
 	PrefixInt64_LE
 )
 
+// Size returns a size of given prefix in bytes, and -1 in case of types with undefined size.
+func (p PrefixType) Size() int {
+	switch p {
+	case PrefixVarInt:
+		fallthrough
+	case PrefixVarLong:
+		return -1
+	case PrefixInt16_BE:
+		fallthrough
+	case PrefixInt16_LE:
+		return 2
+	case PrefixInt32_BE:
+		fallthrough
+	case PrefixInt32_LE:
+		return 4
+	case PrefixInt64_BE:
+		fallthrough
+	case PrefixInt64_LE:
+		return 8
+	}
+
+	return -1
+}
+
 // CloseReason denotes a reason that Close() function has been called for.
 // Close() can be triggered either by server, or by client (connection reset by peer).
 type CloseReason int
