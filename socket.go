@@ -163,6 +163,23 @@ func (s *Socket) OnRecycle(handler func()) {
 	s.recycleHandlers = append(s.recycleHandlers, handler)
 }
 
+// Recycle closes the socket and marks it as recyclable.
+func (s *Socket) Recycle() error {
+	err := s.Close()
+
+	s.recycleHandlersMutex.RLock()
+	{
+		for i := len(s.recycleHandlers) - 1; i >= 0; i-- {
+			handler := s.recycleHandlers[i]
+			handler()
+		}
+	}
+	s.recycleHandlersMutex.RUnlock()
+
+	atomic.StoreUint32(&s.recyclable, 1)
+	return err
+}
+
 // Unwrap returns underlying net.Conn instance from Socket.
 func (s *Socket) Unwrap() net.Conn {
 	return s.conn
@@ -233,21 +250,6 @@ func (s *Socket) reset() {
 
 	s.prev = nil
 	s.next = nil
-}
-
-func (s *Socket) recycle() {
-	_ = s.Close()
-
-	s.recycleHandlersMutex.RLock()
-	{
-		for i := len(s.recycleHandlers) - 1; i >= 0; i-- {
-			handler := s.recycleHandlers[i]
-			handler()
-		}
-	}
-	s.recycleHandlersMutex.RUnlock()
-
-	atomic.StoreUint32(&s.recyclable, 1)
 }
 
 func (s *Socket) isRecyclable() bool {

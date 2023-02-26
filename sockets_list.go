@@ -89,7 +89,7 @@ func (s *socketsList) Reset() {
 	defer s.m.Unlock()
 
 	for socket := s.head; socket != nil; socket = socket.next {
-		socket.recycle()
+		_ = socket.Recycle()
 		s.recycleSocket(socket)
 	}
 

@@ -55,7 +55,7 @@ func (g *goroutinePerConnection) OnAccept(socket *Socket) {
 		}()
 
 		defer func() {
-			socket.recycle()
+			_ = socket.Recycle()
 			atomic.AddInt32(&g.goroutines, -1)
 		}()
 

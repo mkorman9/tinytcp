@@ -34,7 +34,7 @@ func TestSocketsListCleanup(t *testing.T) {
 		sockets[i] = list.New(conn)
 	}
 
-	sockets[0].recycle()
+	_ = sockets[0].Recycle()
 	list.Cleanup()
 
 	// then
