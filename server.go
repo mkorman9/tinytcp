@@ -4,7 +4,6 @@ import (
 	"errors"
 	"net"
 	"sync"
-	"time"
 )
 
 // Server represents a TCP server. Server is responsible for accepting new connections using Listener,
@@ -17,11 +16,11 @@ type Server struct {
 	forkingStrategy ForkingStrategy
 	sockets         *socketsList
 	metrics         ServerMetrics
+	backgroundJob   *backgroundJob
 
 	errorChannel chan error
 	isRunning    bool
 	runningMutex sync.Mutex
-	ticker       *time.Ticker
 	abortOnce    sync.Once
 
 	metricsUpdateHandler func(ServerMetrics)
@@ -37,7 +36,7 @@ func NewServer(address string, config ...*ServerConfig) *Server {
 	}
 	c := mergeServerConfig(providedConfig)
 
-	return &Server{
+	s := &Server{
 		config:               c,
 		address:              address,
 		listener:             newListener(address, c),
@@ -47,6 +46,10 @@ func NewServer(address string, config ...*ServerConfig) *Server {
 		startHandler:         func() {},
 		stopHandler:          func() {},
 	}
+
+	s.backgroundJob = newBackgroundJob(c.TickInterval, s.backgroundJobTick, s.backgroundJobPanic)
+
+	return s
 }
 
 // ForkingStrategy sets forking strategy used by this server (see ForkingStrategy).
@@ -116,7 +119,7 @@ func (s *Server) Start() error {
 			return err
 		}
 
-		s.startBackgroundJob()
+		s.backgroundJob.Start()
 		s.forkingStrategy.OnStart()
 		s.startHandler()
 
@@ -147,7 +150,7 @@ func (s *Server) Stop() (err error) {
 		}
 	}
 
-	s.stopBackgroundJob()
+	s.backgroundJob.Stop()
 	s.sockets.Reset()
 	s.forkingStrategy.OnStop()
 	s.stopHandler()
@@ -200,31 +203,13 @@ func (s *Server) handleNewConnection(connection net.Conn) {
 	s.forkingStrategy.OnAccept(socket)
 }
 
-func (s *Server) startBackgroundJob() {
-	go func() {
-		defer func() {
-			if r := recover(); r != nil {
-				_ = s.Abort(errors.New("panic inside server background job"))
-			}
-		}()
-
-		if s.ticker == nil {
-			s.ticker = time.NewTicker(s.config.TickInterval)
-		}
-
-		for range s.ticker.C {
-			s.updateMetrics()
-			s.sockets.Cleanup()
-		}
-	}()
+func (s *Server) backgroundJobTick() {
+	s.updateMetrics()
+	s.sockets.Cleanup()
 }
 
-func (s *Server) stopBackgroundJob() {
-	if s.ticker != nil {
-		s.ticker.Stop()
-	}
-
-	s.ticker = nil
+func (s *Server) backgroundJobPanic(err error) {
+	_ = s.Abort(err)
 }
 
 func (s *Server) updateMetrics() {
