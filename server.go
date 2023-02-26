@@ -16,7 +16,7 @@ type Server struct {
 	forkingStrategy ForkingStrategy
 	sockets         *socketsList
 	metrics         ServerMetrics
-	backgroundJob   *backgroundJob
+	housekeepingJob *housekeepingJob
 
 	errorChannel chan error
 	isRunning    bool
@@ -47,7 +47,7 @@ func NewServer(address string, config ...*ServerConfig) *Server {
 		stopHandler:          func() {},
 	}
 
-	s.backgroundJob = newBackgroundJob(c.TickInterval, s.backgroundJobTick, s.backgroundJobPanic)
+	s.housekeepingJob = newHousekeepingJob(c.TickInterval, s.housekeepingJobTick, s.housekeepingJobPanic)
 
 	return s
 }
@@ -119,7 +119,7 @@ func (s *Server) Start() error {
 			return err
 		}
 
-		s.backgroundJob.Start()
+		s.housekeepingJob.Start()
 		s.forkingStrategy.OnStart()
 		s.startHandler()
 
@@ -150,7 +150,7 @@ func (s *Server) Stop() (err error) {
 		}
 	}
 
-	s.backgroundJob.Stop()
+	s.housekeepingJob.Stop()
 	s.sockets.Reset()
 	s.forkingStrategy.OnStop()
 	s.stopHandler()
@@ -203,12 +203,12 @@ func (s *Server) handleNewConnection(connection net.Conn) {
 	s.forkingStrategy.OnAccept(socket)
 }
 
-func (s *Server) backgroundJobTick() {
+func (s *Server) housekeepingJobTick() {
 	s.updateMetrics()
 	s.sockets.Cleanup()
 }
 
-func (s *Server) backgroundJobPanic(err error) {
+func (s *Server) housekeepingJobPanic(err error) {
 	_ = s.Abort(err)
 }
 
