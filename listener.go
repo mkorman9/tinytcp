@@ -55,16 +55,21 @@ func (l *netListener) Listen() error {
 func (l *netListener) Accept() (net.Conn, error) {
 	var ln net.Listener
 
-	l.m.RLock()
-	{
+	err := func() error {
+		l.m.RLock()
+		defer l.m.RUnlock()
+
 		if l.listener == nil {
-			l.m.RUnlock()
-			return nil, io.EOF
+			return io.EOF
 		}
 
 		ln = l.listener
+		return nil
+	}()
+
+	if err != nil {
+		return nil, err
 	}
-	l.m.RUnlock()
 
 	return ln.Accept()
 }
