@@ -4,7 +4,6 @@ import (
 	"errors"
 	"net"
 	"sync"
-	"sync/atomic"
 	"time"
 )
 
@@ -20,7 +19,7 @@ type Server struct {
 	metrics         ServerMetrics
 
 	errorChannel chan error
-	isRunning    int32
+	isRunning    bool
 	runningMutex sync.Mutex
 	ticker       *time.Ticker
 	abortOnce    sync.Once
@@ -55,7 +54,7 @@ func (s *Server) ForkingStrategy(forkingStrategy ForkingStrategy) {
 	s.runningMutex.Lock()
 	defer s.runningMutex.Unlock()
 
-	if atomic.LoadInt32(&s.isRunning) == 1 {
+	if s.isRunning {
 		return
 	}
 
@@ -67,7 +66,7 @@ func (s *Server) Listener(listener Listener) {
 	s.runningMutex.Lock()
 	defer s.runningMutex.Unlock()
 
-	if atomic.LoadInt32(&s.isRunning) == 1 {
+	if s.isRunning {
 		return
 	}
 
@@ -121,7 +120,7 @@ func (s *Server) Start() error {
 		s.forkingStrategy.OnStart()
 		s.startHandler()
 
-		atomic.StoreInt32(&s.isRunning, 1)
+		s.isRunning = true
 		return nil
 	}()
 
@@ -137,9 +136,10 @@ func (s *Server) Stop() (err error) {
 	s.runningMutex.Lock()
 	defer s.runningMutex.Unlock()
 
-	if !atomic.CompareAndSwapInt32(&s.isRunning, 1, 0) {
+	if !s.isRunning {
 		return
 	}
+	s.isRunning = false
 
 	if e := s.listener.Close(); e != nil {
 		if !isBrokenPipe(e) {
