@@ -22,8 +22,8 @@ type ServerConfig struct {
 	// TLSConfig is an optional TLS configuration to pass when using TLS mode.
 	TLSConfig *tls.Config
 
-	// TickInterval is an interval that is used by the server to schedule background job runs.
-	// Background job updates server-wide metrics and performs house-keeping.
+	// TickInterval is an interval that is used by the server to schedule housekeeping job runs.
+	// Housekeeping job updates server-wide metrics and recycles socket objects.
 	// (default: 1s).
 	TickInterval time.Duration
 }
