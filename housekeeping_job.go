@@ -2,6 +2,7 @@ package tinytcp
 
 import (
 	"fmt"
+	"io"
 	"sync"
 	"time"
 )
@@ -43,16 +44,21 @@ func (h *housekeepingJob) Start() {
 		h.ticker = time.NewTicker(h.interval)
 
 		for range h.ticker.C {
-			func() {
+			err := func() error {
 				h.m.Lock()
 				defer h.m.Unlock()
 
 				if !h.running {
-					return
+					return io.EOF
 				}
 
 				h.fn()
+				return nil
 			}()
+
+			if err != nil {
+				break
+			}
 		}
 	}()
 }
