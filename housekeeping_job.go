@@ -43,15 +43,16 @@ func (h *housekeepingJob) Start() {
 		h.ticker = time.NewTicker(h.interval)
 
 		for range h.ticker.C {
-			h.m.Lock()
+			func() {
+				h.m.Lock()
+				defer h.m.Unlock()
 
-			if !h.running {
-				break
-			}
+				if !h.running {
+					return
+				}
 
-			h.fn()
-
-			h.m.Unlock()
+				h.fn()
+			}()
 		}
 	}()
 }
