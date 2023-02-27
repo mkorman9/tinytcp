@@ -28,9 +28,35 @@ func TestGoroutinePerConnection(t *testing.T) {
 	// when
 	GoroutinePerConnection(handler).OnAccept(socket)
 	wg.Wait()
-	
+
 	// then
 	assert.NotEqual(t, parentGoroutineID, childGoroutineID, "handler should be run on different goroutine")
+}
+
+func TestGoroutinePerConnectionPanic(t *testing.T) {
+	// given
+	socket := MockSocket(nil, io.Discard)
+	panicMsg := "panic inside handler"
+	var receivedPanicMsg string
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	handler := func(s *Socket) {
+		panic(panicMsg)
+	}
+
+	panicHandler := func(err error) {
+		receivedPanicMsg = err.Error()
+		wg.Done()
+	}
+
+	// when
+	GoroutinePerConnection(handler, panicHandler).OnAccept(socket)
+	wg.Wait()
+
+	// then
+	assert.Equal(t, panicMsg, receivedPanicMsg, "panic errors should match")
 }
 
 func getGoroutineID() uint64 {
